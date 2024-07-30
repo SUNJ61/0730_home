@@ -1,0 +1,98 @@
+[거의 모든 곳에서 사용 중]
+github - > 버전 관리 시스템 : 내가 만든 코드, 프로젝트 등을 보관, 공유에 유용함.
+
+
+소스트리를 이용하여 GUI방식으로 진행. (GUI는 콘솔대신 그래픽을 이용한 방식. / CUI가 콘솔을 이용한 방식 = 명렁어.)
+
+->문제발생 25일 수업예정
+
+[유니티 정보]
+
+오브젝트에 정보수정인 inpector가 있고 이 밑에 이 오브젝트의 정보를 수정하는 컴포넌트들이 있다.
+
+[유니티 기능]
+
+meterial -> sky block -> 6면체 - > 배경을 만들수있음 (2D사진을 3D로 바꾸는 기능.)
+object 생성후 meterial 변경하면 텍스쳐 입힐 수 있음.
+-mesh renderer -> 만든 오브젝트의 텍스쳐를 보이게하는지 안보이게 하는지 정할 수 있음.
+-box collider -> 오브젝트의 닿는 면을 관리 = 물체를 통과시킬지 비통과시킬지 결정 가능.
+-Rigidbody->오브젝트가 충돌시 시뮬레이션을 해준다.
+-audio 리스너 -> 게임중 한개만 있어야함, 소리를 듣는 위치.
+-오디오 소스 ->  소리를 내는 정보
+왼쪽위 asset탭에 -> import asset하면 파일들 불러올 수 있음. (export는 파일 내보내기.)
+총 텍스쳐 바꾸기 -> 머터리얼에서 셰이더 -> 레거시 셰이더-> 디퓨즈를 찾는다. -> 넣을 텍스쳐 이미지를 넣는다.
+오디오소스
+-min distance -> 최대 소리가 들리는 범위
+-max distance -> 소리가 들리는 최대 지점
+Range -> 범위
+spot Angle -> 범위 각
+intensity -> 선명도(눈에 보이는 정도)
+
+[유니티 제작]
+
+스크립트에서 에니매이션을 호출하는 것을 레거시(legacy) 방식이라고 부른다.(메카님[Mecanim] 방식도 있음.)
+
+1. 일정 커맨드 입력시 애니메이션 넣기 -> 뛰어갈때 총 접기 / 뛰어가다 멈추면 다시 총겨누기.
+[레거시 방식]
+public Animation ComBatSGAni; // 애니메이션 컴포넌트에 접근
+
+if (Input.GetKey(KeyCode.LeftShift) && Input.GetKey(KeyCode.W)) //왼쪽 쉬프트 키와 w를 입력하면
+    ComBatSGAni.Play("running"); // 샷건오브젝트 내 running 애니메이션 실행
+
+else if (Input.GetKeyUp(KeyCode.LeftShift)) //왼쪽 쉬프트 키를 누른 상태에서 누르지 않은 상태가 됬다면
+    ComBatSGAni.Play("runStop"); // 샷건오브젝트 내 runStop 애니메이션 실행
+
+getkey -> 누르는 동안
+getkeydown -> 눌렀다면 총알 발사
+getkeyup -> 누른 후 키를 땟다면
+
+2. 키보드 F키를 이용해서 플래쉬 껏다 키기.
+
+불빛을 넣을 오브젝트를 선택후 light -> spot light를 추가
+
+public Light FlashLight; // 불빛 컴포넌트에 접근
+
+if(Input.GetKeyDown(KeyCode.F)) // 키보드에서 f를 입력하면
+    FlashLight.enabled = !FlashLight.enabled; // FlashLight의 light 컴포넌트의 상태를 바꾼다.
+
+3. 플래쉬 껏다 키기에 소리내기
+플레이어 오브젝트에 오디오소스 추가.
+
+public AudioClip FlashSound; // 소리파일 -> 출력되는 소스
+public AudioSource FlashSound_Source; // 오디오 소스 -> 소리가 출력되는 위치
+
+FlashSound_Source.PlayOneShot(FlashSound, 1.0f); // PlayOneShot(소리파일, 소리볼륨) -> 소리파일 한번만 출력
+
+4.계단에 올라갔을 때 형광등이 켜지고 벗어나면 꺼지는 로직 만들기.
+충돌 감지 colloder를 이용. (충돌감지는 대부분 피해자에서 실행된다.)
+
+빈 오브젝트 만들기 -> point light추가
+->해당 불빛에 capsule collider를 추가 -> is trigger를 체크하면 통과되면서 접촉을 감지한다.
+
+플레이어 오브젝트의 태그를 player로 설정.
+
+private void OnTriggerEnter(Collider other) // is trigger를 사용했을 때 통과하면서 충돌 감지하는 함수
+{
+    // 사용자가 호출하지 않아고 조건을 만족하면 스스로 호출하기에 콜백함수라고 한다.
+    //여기서 collider는 충돌을 감지하는 구조체이다.
+    if(other.gameObject.tag == "Player") // 충돌된 오브젝트의 태그가 플레이어면
+    {
+        StairLight.enabled = true; //충돌 감지가 되면 불빛이 on된다. light컴퍼넌트 체크가된다.
+        Sorce.PlayOneShot(LightSound, 1.0f);
+    }
+}
+private void OnTriggerExit(Collider other) // collider 범위에 들어왔다가 빠져나갔을 때 발동하는 함수.
+{ //OnTriggerEnter와 한쌍이다.
+    if(other.gameObject.tag =="Player")
+    {
+        StairLight.enabled = false;
+        Sorce.PlayOneShot(LightSound, 1.0f);
+    }
+}
+
+
+[C#]
+
+매개변수(인자, 파라미터)가 없는 함수 -> 함수 뒤에 빈 괄호가 오는 것.
+매개변수가 있는 함수 -> 함수에 값 1개를 전달하는 방식.
+반환값이 있는 함수 -> return을 통해 함수가 값을 main에 전달해 주는 것.

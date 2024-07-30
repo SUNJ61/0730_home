@@ -1,0 +1,319 @@
+-3D게임과 차이점으로는 2D게임 제작시 디렉셔널 라이트가 없다.
+ -> 2D게임은 빛없이 만든다.(포인트라이트, 스팟라이트 등등.. ) 이유는 메모리를 많이 차지하기 때문이다.
+ -> 빛을 넣는다고 해도 디렉셔널 라이트 1개만 넣는다.
+
+-메인 카메라에 projection -> perspective는 3D카메라 즉, 원근감이 있는 카메라이다.
+                                     orthographic은 2D카메라 즉, 원근감 없이 보이는 그대로를 보여줌
+===============================================================================
+2D게임 제작
+
+0. 모바일 실행을 위해 설정 만지기
+1. 배경화면 무한반복 하기
+   -모델링을 움직이지않고 모델링안에 메쉬렌더러 머터리얼 안에 있는 이미지를 이동시키는 방법
+   -모델링 없이 이미지 스프라이트 랜더러를 이용하여 무한이동하는 방법
+
+2. 게임 플레이 음악 넣기
+
+3. 플레이어(로켓)만들기
+
+4. 장애물 운석 만들기
+
+5. 운석과 부딪칠 때 카메라 흔들림
+
+6. 모바일 컨트롤 만들기
+===============================================================================
+
+0. 모바일 실행을 위해 설정 만지기
+   -에딧 -> 프리퍼런스 -> analysis -> 익스터널 스크립트 에디터를 비주얼 스튜디오로 지정해주어야한다.
+   -위에 같은 탭에 아래 쪽에 JDK(자바개발환경)가 설치되어있어야 한다. 설치 경로에 한글이 없어야한다.
+   -파일 -> 빌드 세팅에 안드로이드로 변경후 스위치 플랫폼을 해주어야한다.(변경후 빌드, 빌드앤런이 둘다 활성화 되어야한다.)
+
+1. 배경화면 무한반복 하기
+
+   -모델링을 움직이지않고 모델링안에 메쉬렌더러 머터리얼 안에 있는 이미지를 이동시키는 방법
+    ->하이라키에 3D오브젝트 쿼드를 만든다 (3D오브젝트중 용량이 가장 작은 오브젝트)
+       #플레이어가 보는 한면만 렌더링 되는 오브젝트이다.
+    ->쿼드를 카메라 크기에 맞춰 스케일을 키운다.
+    ->쿼드에 콜라이더 컴퍼넌트를 삭제한다.
+    ->쿼드에 맞는 머터리얼 제작 : 쉐이더 모바일/파티클/알파블렌드 선택후 이미지 넣기(이미지는 sprite 2D, 안드로이드 최적화)
+    ->쿼드에 메쉬랜더러에 머터리얼 넣기
+
+    ->머터리얼에 적용된 이미지 움직이기, 쿼드에 스크립트 적용(스크립트 제작)
+       #요즘은 잘 쓰지 않는 방법이다.
+(선언)
+private MeshRenderer mesh; //이미지
+
+private float Speed = 0.5f; //속도
+private float x; //방향
+
+(스타트)
+ mesh = GetComponent<MeshRenderer>();
+
+(업데이트)
+ x += Speed * Time.deltaTime;
+ mesh.material.mainTextureOffset =  new Vector2 (x, 0f); //머터리얼에 이미지의 정보를 가져오고 위치, 방향을 변화 시킨다.
+ //이미지를 x축 양의 방향에서 추가시킨다. 즉, 이미지는 왼쪽으로 밀리는 것 처럼 보인다.
+
+
+       -모델링 없이 이미지 스프라이트 랜더러를 이용하여 무한이동하는 방법
+       -배경이미지 1개 추가
+        ->이미지에 어드밴스드의 워프 모드가 repeat로 설정하고 이미지의 스프라이트 모드에 피벗도 탑레프트로 설정한다.
+           타일 모드도 컨티뉴어스로 변경한다. 스프라이트 쇼트 포인트도 피벗으로 바꾼다.
+        ->숄팅레이어의 태그를 추가하여 BGNear 태그만들어 준후 오더인 레이어를 0으로 준다. 
+        ->스프라이트 이미지로 설정된 이미지를 하이라키에 올린다.
+        ->배경에 가려지지 않기 위해 z값을 배경보다 카메라에 가깝게 설정한다.
+        ->이미지를 늘리기위해 타일로 드로우 모드를 바꾼다
+        ->이미지를 무한 반복하기위해 width를 넉넉히 늘려준다.
+        ->이외 이미지의 높이, 위치를 사용에 맞게 조정한다.
+        ->해당 배경이미지에 스크립트 적용, 작성으로 이미지를 움직인다.
+
+(선언)
+private Transform tr = null; //필요 컴퍼넌트 (선언과 동시에 초기화 -> 선언만하고 초기화를 안했다고 가끔 경고날림 그거 예방)
+
+private float Speed = 10f; //속도
+private float x; //방향
+private Vector2 offset = Vector2.zero; //선언과 동시에 초기화
+
+(스타트)
+void Start()
+{
+    tr = GetComponent<Transform>();
+}
+
+(업데이트)
+tr.Translate(Vector2.left * Speed * Time.deltaTime); //빠르게 움직이지 않는 것들은 translate로 움직인다. (우 -> 왼으로 움직임)
+
+if (tr.position.x <= -61f)
+{
+    tr.position = new Vector3(-19.4f, tr.position.y, tr.position.z); //이미지의 x좌표가 -63이 되면 다시 17.5로 되돌린다.
+}
+
+2. 게임 플레이 음악 넣기
+
+  -메인카메라에 오디오 소스 추가 (최소 소리들리는 거리 10 / 최대 소리들리는 거리 15로 설정), 넣을 오디오 클립추가
+   오디오 클립을 무한루프를 돌려 계속 나오도록 설정 (loop탭 체크)
+   #스크립트 x
+
+3. 로켓이미지 삽입 및 이동제어
+
+  ->마찬가지로 이미지 최적화 한다.
+  ->이미지를 하이라키에 올리고 z값을 -2로 바꾼다.
+  ->로켓의 이미지가 너무커 드로우 모델을 슬라이스드로 바꾼후 폭 2.5 / 높이 1로 바꾼다.
+  ->숄팅레이어의 태그를 추가하여 로켓 태그만들어 준후 오더인 레이어를 1로 준다. (레이어를 더 높게 설정)
+  ->사용할 파티클을 로켓 밑에 넣는다.
+  ->로켓을 이동시키고 장애물에 충돌하는것을 만들어야한다. 스크립트와 리깃바디2D 캡슐콜라이더2D 추가
+     캡슐 콜라이더의 istrigger 체크 (충돌시 물리력이 생기면 게임이 무거워짐) / 디렉션을 수평으로 바꾼다.
+     리깃바디2D의 바디타입을 Kinematic으로 바꾼다.(물리 발생 x => 중력도 발생 x)
+     스크립트 수정
+
+(선언)
+private Transform tr;
+
+private float Speed = 4f;
+private float h = 0f, v = 0f; //로켓의 x,y좌표
+
+(스타트)
+tr = GetComponent<Transform>();
+
+(업데이트)
+
+if (Application.platform == RuntimePlatform.Android) //앱을 실행한 위치가 안드로이드 일때 발동 (현재 런타임 감지)
+{
+
+}
+else if (Application.platform == RuntimePlatform.WindowsEditor) //앱을 실행한 위치가 윈도우체제유니티일경우 (현재 런타임 감지)
+{
+        h = Input.GetAxis("Horizontal"); //x좌표 컨트롤 a d조정
+        v = Input.GetAxis("Vertical"); //y좌표 컨트롤 w s조정
+
+        Vector2 moveDir = (h * Vector2.right) + (v * Vector2.up);
+}
+
+if (tr.position.x >= 11.0f) //카메라 범위 밖으로 나가지 못하게하는 로직
+    tr.position = new Vector3(11.0f, tr.position.y, tr.position.z);
+else if (tr.position.x <= -11.0f)
+    tr.position = new Vector3(-11.0f, tr.position.y, tr.position.z);
+if (tr.position.y >= 4.5f)
+    tr.position = new Vector3(tr.position.x, 4.5f, tr.position.z);
+else if (tr.position.y <= -4.5f)
+    tr.position = new Vector3(tr.position.x, -4.5f, tr.position.z);
+
+#위 카메라 로직은 아래와 같이 1줄로 줄일 수 있다.
+tr.position = new Vector3(Mathf.Clamp(tr.position.x, -11.0f, 11.0f), Mathf.Clamp(tr.position.y, -4.5f, 4.5f), tr.position.z);
+
+
+4. 장애물 운석 만들기
+
+  ->운석 이미지 올리기 (기본 설정 다하기)
+  ->운석 레이어 만들기 (레이어 오더는 로켓과 같이 1 -> 로켓과 같은 위치에 있어야 하므로)
+  ->충돌감지 필요, 리깃바디 2D와 서클콜라이더2D필요
+     마찬가지로 리깃바디에 바디 타입 kinematic설정 
+     서클 콜라이더도 마찬가지로 istrigger설정
+  ->운석 스크립트 작성
+
+#운석 프리팹 스크립트
+(선언)
+private Transform tr;
+private float Speed = 0f;
+
+(스타트)
+Speed = Random.Range(10.0f, 15f);
+tr = GetComponent<Transform>();
+
+(업데이트)
+ tr.Translate(Vector3.left * Speed * Time.deltaTime);
+ if (tr.position.x <= -15.0f)
+ {
+     Destroy(gameObject);
+ }
+
+  ->만든 운석 프리팹을 생성할 게임매니저 오브젝트, 게임매니저 스크립트 작성
+
+#게임매니저 스크립트
+(선언)
+public GameObject AsteroidPrefab;
+
+private float timePrev;
+private float Yposmin = -3.0f;
+private float Yposmax = 3.5f;
+private float ScaleMin =1.0f;
+private float ScaleMax =2.5f;
+
+(스타트)
+timePrev = Time.time;
+
+(업데이트)
+if(Time.time - timePrev > 1.5f)
+{
+        timePrev = Time.time;
+        float RandomYpos = Random.Range(Yposmin, Yposmax);
+        float AsScale = Random.Range(ScaleMin,ScaleMax);
+        AsteroidPrefab.transform.localScale = Vector3.one * AsScale;
+        Instantiate(AsteroidPrefab,new Vector3(15.0f, RandomYpos, AsteroidPrefab.transform.position.z),Quaternion.identity);
+}
+
+5. 운석과 부딫혔을 때 카메라 흔들림 (게임 매니저에서 관리)
+
+  ->로켓 태그 플레이어, 운석태그 만들고 적용.
+  ->로켓에 오디오 소스 추가
+  ->로켓에 충돌 감지하는 스크립트 추가
+  ->이펙트 프리팹, 사운드 클립 넣기 (이펙트 프리팹의 z포지션을 -3으로 해두어야한다.)
+  ->스크립트 수정
+
+#게임매니저
+(선언)
+public static GameManager instance; //싱글턴 기법, 쉽게 접근하기 위해
+
+private Vector3 PosCamera; //초기 카메라의 위치를 가지는 변수
+private float HitBeginTime; //로켓이 운석이랑 부딪친 시간을 저장하는 변수
+private bool IsHit = false; //로켓이 운석이랑 부딪쳤는지 아닌지 판단하는 변수
+
+(스타트)
+instance = this;
+
+(업데이트)
+if(IsHit)
+{
+    float x = Random.Range(-0.05f, 0.05f);
+    float y = Random.Range(-0.05f, 0.05f);
+    Camera.main.transform.position += new Vector3(x, y, 0f); //부딪친 동안 랜덤으로 뽑아 낸값을 계속 더하여 카메라 흔듦.
+
+    if(Time.time - HitBeginTime > 0.3f) //운석과 충돌 후 0.3초가 지나면 IsHit false, 카메라 원위치
+    {
+        IsHit = false;
+        Camera.main.transform.position = PosCamera;
+    }
+}
+
+(함수 추가)
+public void TurnOn()
+{
+    IsHit = true;
+    PosCamera = Camera.main.transform.position; //흔들리기전 카메라 위치값 저장
+    HitBeginTime = Time.time;
+}
+
+#로켓컨트롤
+(선언)
+public GameObject Star_Effects;
+public AudioSource source;
+public AudioClip hitClip;
+
+private string asteroidTag = "ASTEROID";
+
+(스타트)
+source = GetComponent<AudioSource>();
+
+(함수추가)
+private void OnTriggerEnter2D(Collider2D other)
+{
+    if(other.gameObject.CompareTag(asteroidTag))
+    {
+        Destroy(other.gameObject); //운석 삭제
+        GameObject eff = Instantiate(Star_Effects, other.transform.position, Quaternion.identity); //이펙트 생성
+        Destroy(eff, 0.5f); //0.5초후 이펙트 삭제
+        source.PlayOneShot(hitClip, 1.0f);
+        GameManager.instance.TurnOn();
+    }
+}
+
+6. 모바일 컨트롤 만들기
+
+  -핸드폰 스크린 좌표는 왼쪽 하단이 0,0이다. 즉, 좌표에 차이가 발생한다.
+   로켓 컨트롤의 좌표가 달라져야한다.
+
+#로켓 컨트롤 스크립트 수정
+
+(선언)
+private float halfHeight = 0f;
+private float halfWidth = 0f;
+
+(스타트)
+halfHeight = Screen.height * 0.5f; //모바일은 pc해상도에 절반이라 0.5를 곱한다. (곱하기가 나누기보다 연산이 빠르다)
+halfWidth = Screen.width * 0.5f; //모바일은 pc해상도에 절반이라 0.5를 곱한다. (덧셈 -> 뺄셈 -> 곱셈 -> 나눗셈 순)
+
+(업데이트)
+if (Application.platform == RuntimePlatform.Android) //앱을 실행한 위치가 안드로이드 일때 발동 (현재 런타임 감지)
+{ //핸드폰 스크린 좌표는 왼쪽 하단이 0,0이다. 즉, 좌표에 차이가 발생한다.
+    if(Input.touchCount > 0) //터치가 된 횟수를 카운팅한다 == 터치가 되었다면
+    {
+        float deltaPosX = Input.GetTouch(0).position.x - halfWidth; //터치한 위치에서 반을 뺀다.
+        float deltaPosY = Input.GetTouch(0).position.y - halfHeight; //정확한 터치 위치를 구하기위해서이다.
+
+        float XPos = deltaPosX - tr.position.x; //터치위치에서 현재 오브젝트 위치를 뺀다.
+        float YPos = deltaPosY - tr.position.y; //터치한곳과 오브젝트 사이 거리가 나온다.
+
+        tr.Translate(Speed * Time.deltaTime * XPos * 0.05f, Speed * Time.deltaTime * YPos * 0.05f, 0f);
+        //오브젝트를 구한 거리만큼 이동시킴
+        QuitApp();
+    }
+}
+
+7. 빌드 세팅하기
+   -플레이어 세팅 클릭
+   -플레이어탭 -> 안드로이드 -> 리솔류션앤 프레젠테이션 선택 -> 오리엔테이션에 디폴트 오리엔테이션을
+    랜더스캐이프 라이트로 설정한다. (가로로 보기 설정)
+   -컴퍼니 네임 YeonSeITCompany
+   -아더세팅 -> 미니멈 api레벨을 안드로이드 11.0으로 설정 (레벨30)
+   -스크립트 백엔드 -> IL2CPP
+   -ARMv7 /ARM64 체크
+   ->빌드하여 모바일로 옮겨서 apk파일 실행하면 게임할 수 있음.
+
+8. 파이어버튼 , 조이스틱 밑작업
+    -캔버스 만들기, 캔버스 (스케일 윗 스크린 사이즈 설정해서 1920 1080맞추기)아래에 아래 오브젝트 만들기
+    -버튼 만들어서 파이어 적기, 위치 조정
+    -조이스틱 이미지 만들어서 아들오브젝트 이미지를 만들어 조이스틱 모양 만들기
+
+===================================================================================
+
+C#과 윈도우 form같이 사용하기.
+ -C#프로젝트 하나 만들기, 솔류선에서 새프로잭트 -> 윈도우 폼 프로젝트 만들기
+ -두개의 프로젝트 동시에 다루기
+
+윈도우 폼 다루기
+ -보기 탭에 도구상자 열기 -> 모든 윈도우 폼 Textbox 넣기
+ -텍스트 박스 우클릭 -> 속성 -> 폰트 찾아서 돋움, 글자크기 키우기
+ -속성에 네임 찾아서 이름을 num1Txt로 바꾸기
+ -폰트 돋움 20으로 바꾸고 text를 첫번째 숫자 입력으로 바꾼다.
+ -레이블, 텍스트박스 하나씩 복사하기 (컨트롤 c v됨)
+ -도구상자에서 버튼 추가 (이름 폰트 적절히 바꾸기) -> +기능 제작예정

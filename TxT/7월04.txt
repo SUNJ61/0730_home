@@ -1,0 +1,127 @@
+[SerializeField] //private라 선언했지만 인스펙트 상에 보이게 해주는 명령어
+
+[preview]========================================================================
+1.컨트롤러 만들기
+ -W앞, A왼, S뒤, D오 방향으로 이동
+ -leftShift + w -> 달리기
+ -Spacebar -> 점프
+ -마우스를 x축방향으로 움직이면 1인칭 캐릭터는 y축으로 회전
+ -마우스를 y축방향으로 움직이면 1인칭캐릭터는 x축 회전
+
+[제작]===========================================================================
+
+1.컨트롤러 만들기
+
+ -캡슐 오브젝트 만들고 그안에 메인카메라, 스크립트 적용
+ -wasd이동만들기, 스크립트 수정
+
+##선언
+
+public float moveSpeed = 5f; //이동 속도
+public float turnSpeed = 90f; //회전 속도
+float h=0f, v=0f, r=0f; //키의 값을 받아오는 멤버 변수
+
+private Transform tr;
+
+##Start함수
+
+tr = GetComponent<Transform>();
+
+
+##업데이트 함수
+
+h = Input.GetAxis("Horizontal"); //키보드에서 A나 D를 누르는 중이면 그 키값을 h에 대입(GetAxis = 누르는 중을 체크하는 명령어)
+                                //A를 누르면 -1 , 누르지 않으면 0 , D를 누르면 1을 넘긴다.
+v = Input.GetAxis("Vertical"); //키보드에서 W나 S를 누르는 중이면 그 키값을 v에 대입
+                               //S를 누르면 -1, 누르지 않으면 0 , W를 누르면 1을 넘긴다.
+// 이걸 확인하는 방법은 edit에 프로젝트 세팅에 인풋매니저 axes탭을 펼치면 확인가능하다.
+
+tr.Translate(Vector3.right * h * Time.deltaTime * moveSpeed);//좌표 이동 함수
+tr.Translate(Vector3.forward * v * Time.deltaTime * moveSpeed);
+//키입력에 따라 h와 v가 양수와 음수로 바뀌어 이동 방향이 바뀐다.
+
+현재 문제점 -> w+d와 같이 키를 2개 같이 누르면 속도가 설정한 속도보다 빨라진다.
+               -> 속도 1이아닌 1.14144 (루트2)가된다. 두 백터의 합이기 때문에 피타고라스 정리에 의해 값이 늘어남.
+               -> 정규화를 시켜 전부다 균일하게 속도가 1이 되도록 설정한다.
+
+##코드 수정 (기존 방향 전환 tr.Translate 명령어 대신 이걸 사용한다.)
+
+Vector3 Normal = (h*Vector3.right) + (v*Vector3.forward);
+tr.Translate(Normal.normalized * Time.deltaTime * moveSpeed);
+
+ -마우스로 화면 회전하기 스크립트 추가
+
+##선언 추가
+public float xSensitivity = 100f; //마우스 감도
+public float ySensitivity = 100f; //마우스 감도
+public float YminLimit = -45f; //상하 회전 x축 회전 제한 값.
+public float YmaxLimit = 45f; //상하 회전 y축 회전 제한 값. 상하 45도씩만 바라볼 수 있음
+public float XminLimit = -360f; //좌우 회전 제한 값.
+public float XmaxLimit = 360f; //좌우 회전 제한 값. 360도 돌 수 있음
+
+private float xRot = 0.0f;
+private float yRot = 0.0f;
+
+##업데이트에 코드 추가
+
+xRot += Input.GetAxis("Mouse X") * xSensitivity * Time.deltaTime; //계속 마우스가 움직이는 만큼 값을 더함
+yRot += Input.GetAxis("Mouse Y") * ySensitivity * Time.deltaTime; //계속 마우스가 움직이는 만큼 값을 더함
+
+yRot = Mathf.Clamp(yRot,YminLimit,YmaxLimit); //yRot을 최대 45, 최소 -45로 지정
+
+tr.eulerAngles = new Vector3(yRot, xRot, 0f);//백터방향으로 회전하는 함수
+
+ -현재 문제점 -> 마우스를 올리면 화면이 내려가고 마우스를 내리면 화면이 올라간다
+
+##코드 수정
+tr.eulerAngles = new Vector3(-yRot, xRot, 0f);//백터방향으로 회전하는 함수
+
+
+ -달리기 기능 추가
+
+##업데이트에 코드 추가
+
+if (Input.GetKey(KeyCode.LeftShift) && Input.GetKey(KeyCode.W))
+    moveSpeed = 10f;
+else if (Input.GetKeyUp(KeyCode.LeftShift))
+    moveSpeed = 5f;
+
+ -점프 기능 추가
+
+##추가 선언
+
+private float jumpForce = 5.5f;
+
+##업데이트에 추가
+
+if(Input.GetKeyDown(KeyCode.Space))
+    GetComponent<Rigidbody>().velocity = Vector3.up * jumpForce;
+
+ ->현재 문제점 점프를 계속하면 계속 공중에 올라감
+
+##추가 선언
+
+public bool jump_T = true;
+
+##추가 함수
+
+private void OnCollisionEnter(Collision col)
+{
+    if (col.gameObject.tag == "Ground")
+    {
+        jump_T = true;
+    }
+}
+
+##추가 업데이트 점프 관련 if문안에
+
+jump_T = false;
+
+[C#]============================================================================
+
+try catch문 
+ -finally : try나 catch를 거친 후에 반드시 finally를 거친다.
+ -기타 예외 처리인 경우 new Exception으로 새로운 객체를 만들어 예외 처리시 나오는 문구를 설정할 수 있다.
+ -인덱스 범위를 오버한 예외 처리 = IndexOutOfRangeException
+  try안에 인덱스를 벗어난 경우가 생겼을 경우 알아서 감지하고 예외 처리한다.
+ -null을 할당하지 못하는 예외 처리 = ArgumentNullException

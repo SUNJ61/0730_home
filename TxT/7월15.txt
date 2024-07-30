@@ -1,0 +1,337 @@
+유니티 rigidbody의 Collision Detection
+ -> Discrete : 충돌감지를 일정 시간 간격으로 끊어서 감지할 때 사용한다. (tag로 감지)
+ -> Continuous : 움직이기 이전 위치와 움직인 다음 위치 사이에서 예상되는 충돌까지 함께 감지한다. (layer로감지)
+
+유니티 유한 상태 머신 (Finite State Machine = FSM)
+ -> 한번에 한 상태만 현재 상태가 되도록 프로그램을 설계하는 모델
+
+유니티 애니메이터 상태
+ -> entry : 현재 상태가 진입하는 입구
+ -> exit : 상태 머신의 동작이 종료되는 출구
+ -> any state : 현재 상태가 무엇이든 특정 상태로 즉시 전이되는 것을 허용하는 상태
+
+유니티 애니메이터 Transition Duration
+ -> 전환 지속시간은 전이가 이루어 지는 동안 현재 애니메이션 클립과 다음 애니메이션 클립을 섞어 부드럽게 이어 준다.
+     3D애니메이션은 지연시간을 넣어서 부드럽게 해야하지만 2D애니메이션에서는 하지 않는다.
+     2D애니메이션은 관절이나 조인트 아바타가 없기 때문에 지연이 존재하지 않는다.
+
+유니티 Resources
+ -> 네트워크상의 프리팹 폴더이다.
+     게임시작 전에 올려야 할 파일들을 대기하고 있다가 올린다. (캐싱파일)
+
+유니티 개임매니저(싱글턴 패턴으로 만든다.)의 필요성
+ -> 게임 점수 저장.
+ -> 게임 오버 상태 저장.
+ -> 플레이어 사망을 감지, 게임오버 실행 처리
+ -> 점수에 따라서 점수 UI 텍스트 갱신
+ -> 게임 오버 되었을 때 게임 오버 UI 활성화
+
+유니티 오브젝트 풀링
+ -> 오브젝트를 Destory하면 삭제된 오브젝트는 한번에 사라지는게 아니라, 모아뒀다가 가비지 콜렉터가 와서 삭제한다.
+ -> 이때, 너무많은 오브젝트가 발생하면 게임이 무거워진다.
+ -> 이를 해결하기위해 오브젝트를 꺼놨다가, 오브젝트를 발생하는 트리거를 누를시 오브젝트를 켰다가, 껏다가를 반복한다.
+
+유니티 적 프리팹 소환
+ -> OnEnable에서 소환한다. OnEnable은 오브젝트를 껏타키면 계속 다시 실행 되기 때문이다. (키면 호출)
+ -> awake는 싱글턴을 만들 때 사용
+ -> start는 플레이어나 적의 기본 스텟을 설정할때 사용            
+=================================================================================
+jumpgame만들기
+
+1. 발판 만들기
+  -발판 이미지 올리고 박스콜라이더 넣기
+
+2. 데드존 만들기
+   -발판 아래 존에 들어가면 죽는다, 즉 감지할 박스 콜라이더 넣기
+   -박스콜라이더의 사이즈 조절
+
+3. 캐릭터 스프라이트 gif만들기
+   -여러개로 나뉘어지지 않은 이미지를 클릭, 스프라이트 모드를 멀티플로 바꾼다.
+   -적용후 스프라이트 에디터에 들어간다.
+   -슬라이스에 타입을 그리드 바이 셀 사이즈로 한다.
+   -슬라이스 후 어플라이하면 이미지가 셀사이즈 크기로 짤려진다.
+
+4. 뛰는 플레이어 올리기
+   -run_0 이미지를 올리고 플레이어 태그 적용, 리깃바디 넣어주고 z축을 프리즈해준다.
+   -연속적으로 충돌 감지하기 위해 컨티뉴어스로 바꿔준다.
+   -캐릭터가 발판에 충돌되는지 알기 위해 콜라이더를 캐릭터 발아래 서클 콜라이더를 넣는다.
+   -캐릭터에 오디오 소스넣고 플레이 온 어웨이크를 끈다. (플레이하자마자 소리나는 거 방지)
+   -오디오 클립에 점프를 올린다. (플레이 온 어웨이크를 껐기에 플레이하자마자 점프소리가 안난다.)
+
+5. 애니메이션 만들기
+   -플레이어를 선택후 윈도우 -> 애니메이션 ->애니메이션을 골라 편집 탭을 연다.
+   -Create로 새로운 애니메이션을 만들고 그 탭에 런 스프라이트 전체를 넣는다.
+   -애니메이션 편집 탭에 쇼 샘플레이트를 체크, 셋 샘플레이트를 24를 지정한다.
+   -샘플 숫자를 바꿔서 속도 조절도 가능하다.
+   -같은 방법으로 점프, 다이 애니메이션도 만든다.
+   -다이는 애니메이션이 반복되면 안된다. 루프타임 끄기
+   -애니메이터에서 노드 연결하기
+   
+6. 배경, 초기 발판, 캐릭터 추가
+
+ ->배경과 발판에 콜라이더 추가해야함
+
+7. 스크립트
+   -> 게임매니저, 플레이어 컨트롤, 발판 컨트롤 스크립트, 배경컨트롤
+   -> 프리팹에 장애물이 있는 발판을 계속 생성하는 스크립트 생성
+
+####플레이어 컨트롤
+
+[SerializeField]
+private AudioClip deathClip; //리소스 공간에 담아 스크립트로 가져온다.
+private AudioSource audioSource;
+private Rigidbody2D rbody2D;
+private Animator animator;
+
+private readonly string DieStr = "die";
+private readonly string IsGroundedStr = "IsGrounded";
+private readonly string DieTriggerStr = "DieTrigger";
+private readonly string PlayerStr = "Player";
+private readonly string DeadStr = "Dead";
+
+private bool IsGrounded = false;
+private bool IsDead = false;
+
+private float jumpForce = 600.0f;
+private int jumpCount = 0;
+void Start()
+{
+    audioSource = GetComponent<AudioSource>();
+    rbody2D = GetComponent<Rigidbody2D>();
+    animator = GetComponent<Animator>();
+    deathClip = Resources.Load(DieStr) as AudioClip;
+    //Resource폴더에 die파일을 오디오 클립으로 형변환 한다. 형변환 실패시 오류발생 x, 하지만 null값이 들어감.
+    //deathClip = (AudioClip) Resources.Load(DieStr) as AudioClip; //이런식으로도 형변환 가능, 변환 실패시 오류 발생.
+    IsDead = false;
+}
+void Update()
+{
+    if (IsDead) return; //죽으면 업데이트 하지않기.
+    if (Input.GetMouseButtonDown(0) && jumpCount < 2)
+    {
+        jumpCount++; //점프 횟수 증가, 점프 1회만 허용
+
+        rbody2D.velocity = Vector3.zero; //점프 직전에 순간적으로 속도를 (0,0)으로 변경
+        rbody2D.AddForce(new Vector2(0f, jumpForce)); //y축으로만 힘을 더하고 x축은 0인 상태로 유지
+        audioSource.Play(); // 오디오 소스에 넣어둔 점프 클립 재생
+    }
+    else if (Input.GetMouseButtonUp(0) && rbody2D.velocity.y > 0) //마우스 왼쪽 버튼을 때고 y축 속도가 0보다 클때
+    {
+        rbody2D.velocity = rbody2D.velocity * 0.5f; //점프로 올라가는 속도가 점차 줄어든다.
+    }
+    animator.SetBool(IsGroundedStr, !IsGrounded); //애니메이션 파라미터 업데이트
+}
+private void OnTriggerEnter2D(Collider2D other)
+{// 트리거 콜라이더를 가진 장애물과 충돌을 감지
+    if(other.CompareTag(DeadStr) && !IsDead)
+    {
+        Die();
+        Destroy(other.gameObject);
+        GameManager.instance.isGameOver = true;
+    }
+}
+
+void Die()
+{
+    animator.SetTrigger(DieTriggerStr);
+    audioSource.clip = deathClip; //오디오 소스 내의 클립을 jump에서 die클립으로 변경 
+    audioSource.Play(); // 오디오소스 플레이
+    rbody2D.velocity = Vector2.zero; //죽으면 속도 없애기
+    GameManager.instance.OnPlayerDead();
+    IsDead = true;
+}
+
+private void OnCollisionEnter2D(Collision2D collision)
+{// 플레이어가 바닥에 닿았을 때 감지
+    if (collision.contacts[0].normal.y > 0.7f) //어떤 콜라이더와 충돌했으며 충돌경사가 0.7보다 크면
+    {//어떤 표면의 노말벡터의 y값이 1.0인 경우 해당 표면의 방향은 위쪽
+        IsGrounded = true;
+        jumpCount = 0;
+    }//즉, 플레이어와 바닥이 닿은 지점의 기울기가 0.7보다 크다면 올라가는 판정을 받는다.
+}
+
+private void OnCollisionExit2D(Collision2D collision)
+{//바닥을 벗어난 것을 감지
+    IsGrounded = false;
+}
+
+####게임 매니저
+
+public static GameManager instance;
+private Text ScoreText;
+private GameObject gameUI;
+private Text GameScoreText;
+
+private string CanvasStr = "Canvas_UI";
+private string ScoreStr = "ScoreText";
+public bool isGameOver = false;
+public int Score = 0;
+
+void Awake() //매니저 클래스는 가장 먼저 불러와야하기때문에 awake사용
+{
+    if (instance == null) //인스턴스가 생성되지 않았을 때
+        instance = this; //동적 할당
+    else if (instance != this) //현재 인스턴스가 자신과 같지 않다면
+        Destroy(gameObject); //오브젝트 삭제
+
+    //DontDestroyOnLoad(gameObject); //다음 씬으로 넘어가더라도 게임 매니저 오브젝트를 없어지지 않게 설정.
+    ScoreText = GameObject.Find(CanvasStr).transform.GetChild(1).GetComponent<Text>();
+    GameScoreText = GameObject.Find(ScoreStr).GetComponent<Text>();
+    //gameOverObj = GameObject.Find("GameOverText").GetComponent<GameObject>(); //게임오브젝트가 꺼져있어서 찾을 수 없음.
+    gameUI = GameObject.Find(CanvasStr).transform.GetChild(1).GetComponent<GameObject>();
+    isGameOver = false;
+}
+void Update()
+{
+    if (isGameOver && Input.GetMouseButtonDown(0)) //게임오버 상태에서 마우스 왼쪽 버튼을 누른다면
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name); //현재 활성화 된 씬을 재시작한다.
+    }
+}
+
+public void AddScore(int newScore)
+{
+    Score += newScore;
+    ScoreText.text = $"Score : {Score.ToString()}";
+    GameScoreText.text = $"Score : {Score.ToString()}";
+}
+public void OnPlayerDead()
+{
+    isGameOver = true;
+    ScoreText.gameObject.SetActive(true);
+    GameScoreText.gameObject.SetActive(false);
+}
+
+####백그라운드 움직임
+
+private float width;
+void Start()
+{
+    BoxCollider2D box = GetComponent<BoxCollider2D>();
+    width = box.size.x;
+    StartCoroutine(BackGroundMove());
+}
+
+private void RePosition()
+{
+    Vector2 offset = new Vector2(width * 2, 0);
+    transform.position = (Vector2)transform.position + offset;
+}
+
+IEnumerator BackGroundMove()
+{
+    while(!GameManager.instance.isGameOver)
+    {
+        yield return new WaitForSeconds(0.02f);
+        if(transform.position.x <= -width)
+        {
+            RePosition();
+        }
+    }
+}
+
+####초기 발판, 배경등 전반적인 움직임
+
+private Transform tr;
+private GameObject PlatformObj;
+
+private float Speed = 10.0f;
+private string PlatformStr = "Platform";
+void Start()
+{
+    tr = GetComponent<Transform>();
+    PlatformObj = GetComponent<GameObject>();
+}
+void Update()
+{
+    if(GameManager.instance.isGameOver == false)
+        tr.Translate(Vector3.left * Speed * Time.deltaTime);
+}
+
+####발판 프리팹에 적용하는 스크립트
+
+public GameObject[] obstacles; //장애물 오브젝트
+
+private string PlayerStr = "Player";
+private bool stepped = false; //플레이어 캐릭터가 밟았는지 확인하는 변수
+
+void OnEnable() //Awake -> OnEnable -> Start 함수 순으로 호출된다.
+{//컴퍼넌트가 활성화 될 때마다  매번 실행 되는 매소드이다.  여기서 발판을 리셋 처리를 한다.
+    stepped = false; //스크립트가 다시 실행될 때 이전 값을 가지고 있을 수도 있어 false로 초기화.
+    for(int i = 0; i < obstacles.Length; i++) //장애물 수만큼 loop
+    {
+        if(Random.Range(0,3) == 0)
+            obstacles[i].SetActive(true); //3분의 1확률로 가시가 꺼졌다 켜졌다 한다. (0이 나온 가시들은 오브젝트가 꺼진다.)
+        else
+            obstacles[i].SetActive(false);
+    }
+}
+private void OnCollisionEnter2D(Collision2D collision)
+{//플레이어 캐릭터가 발판(자신)을 밟으면 점수를 올린다.
+    if (collision.collider.CompareTag(PlayerStr) && !stepped) //밟은 상태가 아니고, 밟은 오브젝트가 플레이어라면
+    {
+        stepped = true; //밟았음을 알려줌.
+        GameManager.instance.AddScore(1);
+    }
+}
+
+####발판을 생성하는 오브젝트에 적용하는 스크립트
+
+ public GameObject platformPrefab;
+ public int count = 3;
+
+ public float SpawnMin = 1.25f;
+ public float SpawnMax = 2.25f;
+ private float timeSpawn; //다음배치까지의 간격
+
+ public float ymin = -3.5f;
+ public float ymax = 1.5f;
+ private float xPos = 20f;
+
+ private GameObject[] Platforms; //미리 생성할 발판
+ private int currentIndex = 0; //현재 순번의 발판 인덱스
+
+ private Vector2 poolPosition = new Vector2(0, -25);
+ private float lastSpawnTime; //마지막 배치 시간
+
+ void Start() // 유니티 이벤트 함수중 제일 빨리 호출 됨 (start보다 빠르게 호출)
+ {
+     Platforms = new GameObject[count]; //count만큼의 공간을 가지는 배열 생성
+
+     for(int i = 0; i < count; i++)
+     { //가져온 프리팹을 원본으로 pool포지션 위치에 새 발판 생성, 생성된 발판을 플랫폼에 할당
+         Platforms[i] = Instantiate(platformPrefab, poolPosition, Quaternion.identity);
+     }
+
+     lastSpawnTime = 0f;
+     timeSpawn = 0f;
+ }
+ void Update()
+ {
+     if (GameManager.instance.isGameOver) return;
+     if(Time.time >= lastSpawnTime + timeSpawn)
+     {
+         lastSpawnTime = Time.time;
+         timeSpawn = Random.Range(SpawnMin, SpawnMax);
+         float yPos = Random.Range(ymin, ymax);
+
+         Platforms[currentIndex].SetActive(false); //현재 순번의 게임 오브젝트를 비활성화 하고 즉시 다시 활성화
+         Platforms[currentIndex].SetActive(true); //이때 발판의 onEnable매소드가 실행됨.
+         Platforms[currentIndex].transform.position = new Vector2(xPos, yPos);
+
+         currentIndex++; //다음 인덱스로 증가
+         if(currentIndex >= count)
+         {
+             currentIndex = 0; //인덱스 범위 밖으로 증가하면 초기화
+         }
+     }
+ }
+  
+===============================================================================
+7월 16일 할 것
+
+3D TPS Game
+Player animation Lagacy형태
+카메라가 플레이어를 쫓아 가는 로직제작
+총알 발사를 오브젝트 풀링으로 구현
+총알 발사를 레이캐스트로 구현

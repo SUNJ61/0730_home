@@ -1,0 +1,207 @@
+==============================================================================
+[유니티 기타지식]
+
+유니티는 씬을 옮길때마다 마우스 커서가 사라지는 버그가 있다.
+Cursor.visible = true; // 커서를 보이게하는 명령어
+Cursor.lockState = CursorLockMode.None; //마우스 고정해제
+
+[preview]========================================================================
+
+1. 플레이어 사망 제작
+
+2. hp 마이너스 되는 오류 해결 
+
+3. 플레이어가 죽으면 나오는 씬 제작
+   -킬수 출력
+   -재도전or시작씬으로 가는 버튼 제작
+[제작]===========================================================================
+
+1. 플레이어 사망 제작
+
+  -몹들이 플레이어가 사망하면 애니메이션 출력
+
+>애니메이션 출력하고자 하는 몹의 에니메이터에가서 새로운 상태 만들기
+>해당 상태에 플레이어가 죽으면 몹이 할 행동 모션 넣기
+>플레이어다이를 감지하는 트리거 만들기
+>any state와 플레이어 사망을 연결 후 죽음 감지 트리거를 조건으로 넣는다.
+
+  -스크립트 추가
+
+(플레이어가 받는 데미지를 관리하는 스크립트에 추가)
+##선언
+public bool isPlayerDie = false;
+
+##감지하는 트리거안에 죽음을 감지하는 함수 추가
+if (initHP <= 0)
+{
+    PlayerDie();
+}
+
+##죽음을 감지하는 함수 제작
+void PlayerDie()
+{
+    isPlayerDie = true;
+
+    GameObject[] mobs = GameObject.FindGameObjectsWithTag("MOB");
+    //런타임에서 MOB라는 태그를 가진 오브젝트들을 mobs배열에 저장.
+    for(int i = 0; i < mobs.Length; i++)
+    {
+        mobs[i].gameObject.SendMessage("PlayerDeath",SendMessageOptions.DontRequireReceiver);
+        //다른 게임오브젝트에 있는 매소드를 호출하는 기능을 가진 명령어
+        //SendMessageOptions.DontRequireReceiver는 string에 오타가있거나 없는함수여도 오류 출력 x
+    }
+
+}
+
+(몹의 행동을 관리하는 스크립트에 추가)
+##선언
+public string playerDie = "PlayerDie";
+
+##업데이트 함수안에 스켈레톤이 죽을경우와 다른 경우로 플레이어 사망 코드 추가
+else if (Player.GetComponent<FPS_Damage>().isPlayerDie)
+{
+    PlayerDeath();
+    return;
+}
+
+##플레이어 죽음 감지 함수 제작
+ public void PlayerDeath()
+ {
+     GetComponent<Animator>().SetTrigger(playerDie);
+ }
+
+
+2. hp 마이너스 되는 오류 해결
+
+  -스크립트 수정
+
+##플레이어 hp를 컨트롤하는 함수 안에 추가
+initHP = Mathf.Clamp(initHP, 0, Maxhp); // initHP 변수의 범위를 지정하는 함수 0 ~ 100 사이 값만 출력
+
+3. 플레이어가 죽으면 나오는 씬 제작
+
+  -엔딩 씬에 점수 텍스트와 play버튼과 quit버튼을 넣는다.
+  -gamemanager오브젝트의 스크립트를 제거하고 uimanager스크립트를 넣는다.
+  -각 버튼에 gamemanager를 추가하여 각각 기능하도록 설정
+
+  -play씬에서 플레이어의 데미지를 관리하는 코드수정
+
+##선언
+
+using UnityEngine.SceneManagement; //씬 관련 라이브러리
+
+##추가 제작
+
+void MoveNextScene()
+{
+    SceneManager.LoadScene("EndScene");
+}
+
+##죽음을 감지하는 함수 가장 아래에 적용
+
+Invoke("MoveNextScene", 3.0f); //3초후 씬넘김
+
+  -씬 넘어가면 마우스 고정및 사라지는 버그 해결
+
+##UI관리 스크립트에 추가
+
+private void Start()
+{
+    Cursor.visible = true; //커서를 다시 나타나게한다.
+    Cursor.lockState = CursorLockMode.None; //마우스 고정해제
+}
+
+  -죽으면 you die화면에 나타내기
+  -ui에 이미지 추가 -> 화면에 전체로 키우는 stretch로 설정
+  -이미지 밑에 text추가
+  -이미지 클릭해서 이미지 감추기
+  -스크립트에서 죽으면 이미지 띄우기 코드 추가
+
+##추가 선언
+
+public GameObject ScreenImg;
+
+##start에 추가
+
+ScreenImg = GameObject.Find("Canvas-UI").transform.GetChild(5).gameObject;
+
+##죽음감지 함수에 추가
+
+ScreenImg.SetActive(true);
+
+  -킬 카운트를 엔딩 ui에 띄우기
+  -스크립트 수정
+
+##킬을 관리하는 스크립트에 가서 킬카운트를 static으로 선언
+
+public static int Killcount = 0;
+
+##엔딩 ui를 관리하는 스크립트에 선언
+
+using UnityEngine.UI;
+public Text FinKill;
+
+##엔딩 ui 관리하는 스크립트 start에 선언
+
+FinKill = GameObject.Find("Text_FinalKill").GetComponent<Text>();
+FinKill.text = $"KILL Score : {GameManager.Killcount.ToString()}"; 
+
+
+
+[C#]============================================================================
+
+-인스터스 필드와 정적 필드
+
+ >인스터스 필드는 static으로 선언되지 않은 변수들이며, 동적으로 객체가 생성되면 같이 생성된다. 즉, 동적 객체가 늘어나면
+   인스터스 필드도 같이 늘어난다.
+
+ >정적 필드는 static으로 선언된 변수이며, static으로 선언한 필드는 프로그램 전체에 걸쳐 하나밖에 존재하지 않는다.
+   즉, 프로그램 전체에 공유해야하는 변수가 있다면 정적필드를 이용한다.
+
+-객체 복사하기
+
+ >얕은 복사 : Paste source = new Paste(); 와 Paste target = source; 와 같은 2개의 객체를 생성했을 때
+                 객체의 복사가 일어나지만 두 객체는 같은 주소를 공유하기 때문에 둘중 한 객체에 속한 변수를 고치면
+                 두개의 객체 변수 모두가 변한다. 이는 클래스가 참조형데이터 즉, 주소를 참조하여 데이터를 불러오기 때문이다.
+                 이런 현상을 얕은 복사라고 한다.
+
+ >깊은 복사 : 위와 같이 복사하는 형태를 만들 때, 복사하는 클래스 내부에서 새로운 객체를 만들어 다른 주소값을 가진 힙을
+                 할당하여 그곳에 이전에 객체가 가지는 값을 저장한다. 이후 복사된 객체의 변수를 바꿔도 주소가 달라졌기 때문에
+                 원본 객체의 데이터와 복사한 객체의 테이터는 다른 값을 가지게 된다.
+                 이러한 현상을 깊은 복사라고 한다. 
+
+-this 키워드와 생성자
+
+>this => 매개변수와 멤버변수가 같을 때 멤버변수 앞에 this(= 본인 클래스명)를 붙여 알려준다.
+
+>this 생성자
+ public My1Class() /public My1Class(int b) :this() /public My1Class(int b, int c) :this(b) 라고 선언된 생성자들이 있을 때
+ this() : 매개변수가 없는 기본생성자를 호출하고 this(b) : 매개변수가 b인 생성자를 호출한다.
+ 즉, 매개변수가 2개인 객체를 생성하면 3개의 생성자가 모두 호출된다.
+
+-객체지향 프로그래밍의 3대 특성
+
+>은닉성 : 사용자에게 최소한의 기능만 노출시키는 것.
+            ->필드는 상수를 제외하고는 무조건 private를 사용하는 것이 좋다.
+            ->다른 클래스에서 변수를 사용해야 될 때 public사용
+
+            접근 한정자(=접근 제어지시자)
+            -public : 클래스 내부 외부 모든 곳에서 접근 가능
+            -protected : 클래스 외부에서는 접근 불가, 상속받은 자식, 파생클래스에서는 public이 된다. 
+                            (상속받지 않으면 private와 동일)
+            -private : 클래스 내부에서만 접근 가능하다. 외부에서는 직접적으로는 접근 불가능.
+                         상속받은 자식클래스나 파생클래스도 접근이 불가능하다.
+            -internal : 같은 어셈블리(프로그램)에 있는 코드에서만 public으로 접근 가능.
+                         다른 어셈블리에 있는 코드에서는 private와 같은 수준의 접근성을 가짐.
+            -protected internal : 같은 어셈블리(프로그램)에 있는 코드에서만 protectec으로 접근 가능.
+                                       다른 어셈블리에 있는 코드에서는 private와 같은 수준의 접근성을 가짐.
+
+>상속성 : 나중에 배움 (부모의 특성을 자식이 그대로 물려받는 것?)
+
+>다형성 : 나중에 배움
+
+-try catch 구문
+
+>try{ 명령어 } - (예외가 발생할것 같은 지역)
+>catch(받는 변수){예외처리 출력}
+>throw 던지는 변수 => 예외를 걸러내는 곳에 적는다.

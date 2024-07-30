@@ -1,0 +1,207 @@
+==============================================================================
+[유니티 기타지식]
+
+-모델링이 다 분할 되어 있는 이유 -> 수정이 일어나기 때문에 서로 분할해서 준다.
+
+-휴머노이드는 특정 동작이 없을 경우 다른 캐릭터의 애니메이션을 가져와서 적용시킬 수 있다. (레거시는 불가능)
+   
+-휴머노이드는 아바타가 본(뼈대)데이터와 관절데이터를 가지고있다.
+
+-컴퍼넌트의 애니메이션이 있으면 레거시, 애니메이터가 있으면 메카님이다. 
+
+-오브젝트의 애니메이션 탭에 루프타임은 해당 애니메이션을 반복해서 재생하는 것을 설정한다.
+
+-유니티는 네비게이션 기능을 지원, 이는 플레이어가 어디있는지 알려주는 기능이다.
+ (즉, 다른 오브젝트에 이것을 넣으면 자동 추적한다.)
+
+-스크립트에서 컴포넌트 넣는게 중요, 최적화 용
+ (유니티 상에서 끌어다 넣으면 해당 컴포넌트를 넣었는지 검사하느라 많이 느려짐)
+ =>this.gameObject.GetComponent<NavMeshAgent>(); //자기자신 오브젝트에 안에 있는 nav컴퍼넌트를 적용시킨다.
+
+-GetComponent<Transform>()는 transform으로 줄여 쓸 수 있다. (모든오브젝트가 다가지고있기 때문)
+
+-자기자신 오브젝트에서 컴포넌트를 가져올때 this.gameObject 생략가능
+ =>animator = GetComponent<Animator>();
+
+-베이크 작업 : npc가 다닐 공간을 지정
+
+(애니메이터 개발창)
+entry : 애니메이션의 시작지점.
+any state : 어떤 상태로든 갈수있는 애니메이션
+set as layer default state : 선택한 애니메이션을 기본 상태로 지정
+parameters : 매개변수(조건) -> int, float, bool, trigger(두개이상 동작을 하나합칠때) 가 있음.
+Layer : 층 (해당 오브젝트에 적용되는 다른 애니메이션을 만들 때 사용)
+has exit time : 설정한 초 이후에 실행되는 기능
+
+[preview]========================================================================
+1. 적(Enemy) 만들기
+  -캐릭터 : 좀비
+  -애니메이션 타입 : 메카님 방식 중 Humonoid
+  -동작 : 플레이어를 추적한다. 추적범위를 벗어나면 idle(쉬는) 동작의 애니메이션을 구현한다.
+            플레이어와 가까우면 공격(Attack)동작을 구현한다.
+            총알에 5번 맞으면 좀비가 사망하는 시스템을 구현한다. (사망 애니메이션 실행)
+            총알에 맞을 때 BloodEffect를 구현한다.
+            총알에 맞을 때 움찔 거리는 애니메이션 실행
+
+2. ui도 같이 구현
+
+(아마 여기까지만 할 듯)
+
+3. CrossHair (aim point 조준점) 만들기
+==============================================================================
+[유니티 제작]
+
+[적 만들기]
+
+1. 좀비 캐릭터 만들기
+  ->에셋 다운로드
+  ->좀비 모델링에 걷는 오브젝트를 씬에 올린다.
+  ->프로젝트에 애니메이션 컨트롤러를 만든다.
+  ->만튼 애니메이션 컨트롤러를 씬에 올린 좀비오브젝트에 에니매이터 컴퍼넌트에 컨트롤러에 넣는다.
+  ->apply root motion체크 해제.
+     (apply root motion을 체크하면 좌표가 애니메이션 좌표로 고정된다. 오브젝트의 좌표는 개발자가 통제하기 위해 체크해제.)
+  ->만든 애니메이션 컨트롤러를 더블클릭하여 개발탭을 연다.
+  ->좀비 모델파일에, 워크부분에 워크애니메이션을 애니메이션 컨트롤러 개발탭에 올린다. (다른 필요한 애니메이션도 올린다.)
+  ->bool파라미터를 두개 만든다. (하나는 추적, 하나는 공격에 사용)
+  ->make transition을 통해 idle과 walk를 쌍방향으로 연결한다.
+  ->idle에서 walk로 가는 노드 클릭 -> has exit time 체크 해제 , 트랜스 듀레이션 0.03 , 컨디션 추가 후 추적 파라미터 true설정
+     =>추적가능 범위에 들어오면 walk노드로 이동이라는 뜻
+  ->마찬가지로 나머지 노드를 전부 연결하여 설정한다.
+  ->윈도우탭에 패키지매니지먼트에서 ai 네비게이션 설치
+  ->좀비 오브젝트에 nav mesh agent컴퍼넌트 추가.
+  ->스탑 디스턴스 2.5로 설정 (최대로 근접하는 거리), 오토 브레이킹 체크해제(목적지에 가까워지면 속도 내리기 해제)
+  ->나머지 각속도, 스피드, 가속도를 조절한다. (Radius -> 범위 / priority -> 우선순위 : 감지된 여러 적 선택 확률)
+  ->bake작업, 장소 오브젝트 클릭 -> 윈도우 ->ai -> 네비게이트 오브솔레이트 선택
+  ->인스팩터에서 스태틱 체크후 네비게이션 오브솔레이트 탭에 bake탭에 bake클릭 (npc이동경로 지정)
+  -> 라디우스와 높이를 줄이면 bake범위가 넓어짐
+  ->스크립트 제작 (좀비 오브젝트에 적용)
+
+(코드 외부 선언)
+[Header("컴포넌트")] //Attribute : 개발자가 쓰면 컴퓨터(유니티)가 읽어 해당 헤더명으로 나눠준다. 
+public NavMeshAgent agent; //추적할 대상을 찾는 네비
+public Transform Player; //추적할 대상과 추적자의 거리를 재기위해 사용
+public Transform thisZombie; 
+public Animator animator;
+
+[Header("관련 변수")]
+public float attackDist = 3.0f; //공격 범위
+public float traceDist = 20f; //추적 범위
+
+(코드 start선언)
+agent = this.gameObject.GetComponent<NavMeshAgent>(); //자기자신 오브젝트에 안에 있는 nav컴퍼넌트를 적용시킨다.
+thisZombie = this.gameObject.GetComponent<Transform>(); //자기자신 오브젝트에 있는 transform컴퍼넌트를 적용시킨다.
+Player = GameObject.FindWithTag("Player").GetComponent<Transform>();
+//하이라키안에 있는 게임오브젝트의 태그를 읽어서 가져온다. GetComponent<Transform>()는 transform으로 줄여 쓸 수 있다.
+animator = GetComponent<Animator>();//자기자신 오브젝트에서 컴포넌트를 가져올때 this.gameObject 생략가능
+
+(코드 update선언)
+//거리를 잰다
+float distance = Vector3.Distance(thisZombie.position, Player.position); //두 오브젝트의 3차원 좌표 거리를 저장한다.
+if (distance <= attackDist)
+{
+    agent.isStopped = true; // 추적 중지
+    animator.SetBool("isAttack", true);
+    //Debug.Log("공격");
+}
+else if (distance <= traceDist)
+{
+    animator.SetBool("isAttack", false);
+    animator.SetBool("isTrace", true);
+    agent.isStopped = false; //추적 시작
+    agent.destination = Player.position; //추적 대상은 플레이어 좌표
+    //Debug.Log("추적");
+}
+else
+{
+    agent.isStopped = true;
+    animator.SetBool("isAttack", false);
+    animator.SetBool("isTrace", false);
+    //Debug.Log("추적 범위 벗어남");
+}
+
+  ->좀비를 통과하지 않기 위해서 콜라이더와 리깃바디를 넣는다.
+  ->충돌시 좀비가 돌지 않도록 리깃바디에서 컨스테인트에서 freeze rotation을 모두 체크한다. (도는걸 제한)
+  ->리깃 바디에서 골리젼 디텍션을 continuous로 변경한다. (충돌을 계속 감지) 
+  ->플레이어 충돌시 좀비 행동 스크립트작성하기.
+
+(선언)
+public Rigidbody rb;
+public CapsuleCollider capCol;
+private string playerTag = "Player"; //이것은 "Player" 문자열을 동적할당 한것이다.
+
+(start함수에 적기)
+rb = GetComponent<Rigidbody>(); 
+capCol = GetComponent<CapsuleCollider>();
+
+(새로운 함수 만들기)
+private void OnCollisionEnter(Collision col) //충돌을 감지할 때 isTrigger체크 안했을때 사용
+{
+    if(col.gameObject.CompareTag(playerTag)) //col.gameObject.CompareTag == "Player"은 동적할당과 비교를 동시에 실행, 런타임에서 할일이 많음 메모리, 속도등 다양한 방면에서 불리함.
+    {//동적 할당과 비교를 따로하는 이 방법을 더 주로 쓴다.
+        rb.mass = 8000f; //플레이와 충돌하면 무게가 5000으로 늘어난다. -> 플레이어와 충돌하더라도 안밀리도록 설정
+    }
+}
+private void OnCollisionExit(Collision col)
+{
+    rb.mass = 75f;
+}
+
+  ->총 맞는 애니메이션 넣기 
+  ->애니매이터에서 트리거 파라미터 추가
+  ->any state에서 gothit으로 노드 연결
+  ->gothit에서 어택, 워크, 아이들에 모두 노드연결
+  ->any state노드에 트리거 넣기 (감지하면 발생)
+  ->나머지 노드는 bool변수 알맞게 넣기 (has exit time체크 되있어야함) 추적은 트레이스 트루, 어택은 어택 트루, 아이들은 트레이스 false
+  ->스크립트 수정
+
+(추가 선언)
+public Animator animator;
+public string hitTrigger = "HitTrigger"
+
+(start에 추가)
+animator = GetComponent<Animator>();
+
+(private void OnCollisionEnter에 추가)
+ else if(col.gameObject.CompareTag(bulletTag))
+ {
+     //Print("아야");
+     animator.SetTrigger(hitTrigger);
+ }
+
+  ->5발 맞으면 죽는것 만들기
+  ->애니메이터에서 트리거 만들기 (다이트리거)
+  ->any state에서 die노드 연결 die에서 exit연결 (각 노드 다이 트리거 설정)
+  ->스크립트 수정
+
+(추가선언)
+public string dieTrigger = "DieTrigger";
+public int hitCount = 0;
+public bool isDie = false;
+
+(private void OnCollisionEnter에 else if에 추가)
+Destroy(col.gameObject);
+if(++hitCount == 5)
+{
+    Zombie_Die();
+}
+
+(함수 추가)
+void Zombie_Die()
+{
+    animator.SetTrigger(dieTrigger);
+    capCol.enabled = false; //콜라이더 비활성화
+    rb.isKinematic = true;
+    isDie = true;
+}
+
+
+(좀비 컨트롤 클래스 파일에서 추가)
+
+(선언)
+public ZombieDamage zombieDamage;
+
+(start에 추가)
+zombieDamage = GetComponent<ZombieDamage>();
+
+(업데이트에 추가)
+if (zombieDamage.isDie) return;

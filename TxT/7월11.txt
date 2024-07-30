@@ -1,0 +1,233 @@
+Apply Root Motion ->기존 애니메이션이 가지고있는 이동 수치를 적용할지 안할지 결정한다.
+                            (체크하면 기존 애니메이션대로 움직인다.)
+
+Comboanimation -> 여러개의 애니메이션 동작 클립을 하나로 묶어서 애니메이션을 구현한다.
+
+eventtrigger -> 이벤트를 감지 (이벤트는 사용자가 설정할 수 있다. 클릭, enter, exit, 업, 다운 등등이있다.)
+===============================================================================
+3D모바일게임 만들기
+
+0. 기본 설정
+
+1. 조이스틱으로 3D캐릭터 조작
+
+2. 버튼을 넣어서 DashAttack과 ComboAttack장면을 애니메이션으로 구현
+
+12일 할 예정
+ui로 사운드 줄이기, FOV(시야각) 조정, 그림자 켜고끄기, 세이브 기능 등을 제작
+
+===============================================================================
+
+0. 기본설정
+
+   -에셋에 준비된 terrain올리기. 해당 terrain을 카메라가 중간으로 오도록 위치를 이동시킨다.
+   -플레이어 모델을 올리고 플레이어 모델 아래에 저장되어있는 base 머터리얼을 모두 넣어준다.
+     ->쉐이터가 안맞아 머터리얼 안나옴 / 쉐이더를 새로 받고, 맞는 바디랑 웨폰머터리얼을 넣어준다.
+     ->쉐이터 툰 -> 라이트 아웃라인 선택, 머터리얼을 밝게 보고 싶으면 maincolor를 밝게 바꾸어준다.
+   -애니메이터를 만들고 적용시킨다.
+   -각종 애니메이션을 넣는다
+    ->attackstandy(idle로 사용)
+    ->skill
+    ->run01_front ->이것은 실제로 애니메이션이 좌표를 움직인다. (조이스틱은 애니메이션이 좌표조절을 해야함.)
+
+   -애니메이션 이어주기, idle과 run을 이어준다. 플롯파라미터를 만들어준다.
+    ->두 애니메이션 컨디션을 설정한다. (아이들->런 m 0.1 : 0.1보다 크면 작동/ 런->아이들 l 0.1 : 0.1보다 작으면 작동)
+
+1-1. 조이스틱 만들기
+   -캔버스 만들기 -> 아래에 판넬만들기 -> 앵커를 바텀레프트로 설정, 너비 폭 300 300으로 설정
+   -캔버스의 ui scale mode를 스케일 위 스크린 사이즈로 하고 아래의 xy값을 fhd값으로 바꿔준다.
+   -판넬 이미지에 터치 백그라운드 이미지 넣기 (투명도 255로 바꾸기), 포지션도 x:40 y:40으로 바꾼다.
+   -판넬아래에 이미지 만들기 , 터치 버튼 이미지넣기
+
+   -조이스틱 이미지에 이벤트트리거만들고 포인트다운, 업 추가
+   -조이스틱 이미지에 스크립트 추가
+
+ /*
+ 1. 자기자신의 위치값을 가져와야한다. (터치 패드가 초기화 되는 위치 저장) 
+ 2. 조이스틱 바깥 원의 반지름을 지정한다. (폭, 넓이 300이였으므로 150이 반지름)
+ 3. 패드이미지를 눌렀는지 파악해야한다. (bool변수 필요)
+ 4. 모바일 터치시 원안에 터치 되는지 안되는지를 정수값으로 판단
+ */
+ [SerializeField]
+ [Tooltip("터치패드포지션")] //인스펙터에 private를 나타내고, 설명을 붙이는 요소
+ private RectTransform touchPad; // 1번
+ private Vector3 _StartPos; // 1번
+
+ private float _dragRadius = 150.0f; // 2번
+
+ private bool _IsBtnPressed = false; // 3번
+
+ private int _touchId = -1; // 4번 : 음수면 밖, 양수면 안
+
+ void Start()
+ {
+     touchPad = GetComponent<RectTransform>(); // 터치패드 위치정보 컴포넌트 참조
+     _StartPos = touchPad.position; // 터치패드가 처음 있었던 위치 저장 (초기화 될 위치)
+ }
+
+ public void ButtonDown()
+ {
+     _IsBtnPressed = true;
+ }
+ public void ButtonUp()
+ {
+     _IsBtnPressed = false;
+     HandleInput(_StartPos);
+ }
+ private void FixedUpdate()
+ {
+     if(Application.platform == RuntimePlatform.Android) //안드로이드에서 구동 될 때
+     {
+         HandleTouchInput();
+     }
+     if (Application.platform == RuntimePlatform.WindowsEditor) //유티니에서 구동 될 때
+     {
+         HandleInput(Input.mousePosition);
+     }
+ }
+ void HandleTouchInput() //모바일에서 패드 원안에서 터치가 되었는지만 판단
+ {
+     int i = 0;
+     if(Input.touchCount > 0) //터치 횟수가 늘어났을 경우
+     {
+         foreach(Touch touch in Input.touches) //터치할때마다 touches에서 좌표를 배열로 저장, 터치 좌표를 하나씩 꺼냄
+         {
+             i++;
+             Vector3 touchPos = new Vector3(touch.position.x, touch.position.y);
+             if (touch.phase == TouchPhase.Began) //터치를 막 시작했을 시
+             {
+                 if(touch.position.x <= (_StartPos.x + _dragRadius)) //터치한 x값 좌표가 원안에 있다면
+                     _touchId = i;
+                 if(touch.position.y <= (_StartPos.y + _dragRadius)) //터치한 y값 좌표가 원안에 있다면
+                     _touchId = i;
+             }
+             if(touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
+             {//터치한 상태로 터치 패드를 움직이고 있거나 터치패드 원안에서 멈춰있을 때
+                 if(_touchId == i) // 터치 패드가 원안에 있다면
+                 {
+                     HandleInput(touchPos); // 터치 패드의 위치를 보낸다.
+                 }
+             }
+             if(touch.phase == TouchPhase.Ended)
+             {
+                 if (_touchId == i)
+                     _touchId = -1;
+             }
+         }
+     }
+ }
+
+ void HandleInput(Vector3 input) //실제 조이스틱 패드를 움직이는 함수
+ {
+     if(_IsBtnPressed) //터치패드를 누르고 있는 상태
+     {
+         Vector3 differVector = (input - _StartPos); // 거리와 방향을 구할 수 있음
+         if(differVector.sqrMagnitude > (_dragRadius * _dragRadius)) //터치 거리가 원밖이라면
+         {
+             differVector.Normalize(); //방향만 가져온다
+             touchPad.position = _StartPos + differVector * _dragRadius; //방향만 유지한체 터치 패드 맨끝에 위치 시킴
+         }
+         else //원안에 있다면
+         {
+             touchPad.position = input;
+         }
+     }
+     else //터치패드를 누르지 않는 상태
+     {
+         touchPad.position = _StartPos;
+     }
+
+     Vector3 differ = touchPad.position - _StartPos; //터치패드의 방향과 거리를 구한다.
+     Vector3 NormalDiffer = new Vector3(differ.x / _dragRadius, differ.y / _dragRadius); //반지름을 나누어서 x,y방향값을 구한다.
+
+     if(player != null)//플레이어가 있으면
+     {
+         player.OnStickPos(NormalDiffer); //최종 결과의 방향값을 전달
+     } 
+ }
+
+
+1-2. 캐릭터 만들기
+   -리깃바디 추가하여 기본 설정하기
+   -캡슐 콜라이더 추가하여 크기 조절하기
+   -플레이어 컨트롤 스크립트 추가
+
+protected Animator animator;
+protected Rigidbody rb;
+
+float h = 0f, v = 0f;
+IEnumerator Start()
+{
+    animator = GetComponent<Animator>();
+    rb = GetComponent<Rigidbody>();
+    yield return null; //컴퍼넌트를 가저온후 1프레임 쉬고 다음 명령어 실행
+}
+public void OnStickPos(Vector3 Stickpos)
+{
+    h = Stickpos.x;
+    v = Stickpos.y;
+}
+void Update()
+{
+    if(animator != null)//애니메이터가 있다면
+    {
+        animator.SetFloat("Speed", (h * h + v * v));
+        if(rb != null)
+        {
+            Vector3 speed = rb.velocity; // 해당 오브젝드가 받고있는 속도(힘과 방향)를 가져온다.
+            speed.x = 4 * h;
+            speed.z = 4 * v; //3D캐릭터이기 때문에 z값을 뽑아온다.
+            rb.velocity = speed; // 리깃바디에서 속도를 받아오고, 그속도를 4배해서 다시 적용한다.
+            if(h != 0f && v != 0f) // 해당 오브젝트가 움직이고 있을 때
+            {
+                transform.rotation = Quaternion.LookRotation(new Vector3(h, 0f, v)); // 힘의 방향으로 회전한다.
+            }
+        }
+    }
+}
+
+1-3. 카메라가 플레이어를 따라다니도록 카메라에 스크립트 추가, 플레이어 오브젝트 넣기
+      ->모바일 게임은 rotation damping / height damping은 건들이지 않는다.
+
+
+2. 버튼으로 콤보 어택, 대쉬어택 만들기
+
+    -버튼은 하던대로 만든다.
+    -버튼에 이벤트 트리거 추가한 후 업 다운 구분해서 모션 조절하기
+    -모션 알맞게 노드로 연결
+
+
+=================================================================================
+
+튜플 - 여러필드를 담을 수 있는 "'구조체'"이다. 앞서 했던 구조체와의 차이는 형식 이름이 없다.
+         튜플은 즉석에서 사용할 때 복합데이터 형식을 선언할 때 적합하다.
+         (응용프로그램 전체에서 사용할 형식을 선언할 때는 사용 x)
+         ->즉 1회용성 용기 같은 느낌이다. 1번쓰고 버린다.
+튜플 선언방식
+var tuple = (123, 456);
+튜플 내부 변수의 인덱스를 명명할 수 있다.
+var tuple2 = (Name : "박찬호", Age : "44");
+튜플의 분해
+var (name, age) = atuple; -> var형식의 name과 age로 분해됨
+튜플 내부 변수 일부 무시
+var btuple = (Name: "박나래", Age: 43); ->튜플 내부의 Age를 버리고 Name의 값만 name2에 저장
+var (name2,_) = btuple; name은 위에서 선언되어서 중복 사용불가
+
+
+인터페이스와 추상클래스
+
+추상클래스 -> 객체를 생성하지 않은 클래스
+부모클래스는 추상클래스(abstract)되는 경우가 많다.
+이유는 자식클래스를 통하여 객체를 만들면 부모클래스의 객체를 만들지 않아도 부모클래스를 이용할 수 있다.
+
+인터페이스 -> 선언 방법 : interface ILogger{} ->인터페이스 명 첫글자는 I여야한다.
+                  함수의 선언만 가능하다. 정의(내부의 코드 작성)는 불가능하다.
+                  어떠한 클래스가 인터페이스를 상속 받으면 인터페이스 안에 선언된 함수를 강제 구현하게 만든다.
+                  즉, 상속 받은 클래스안에 인터페이스에서 선언된 함수를 구현해야한다.
+                  하는법 -> 인터페이스 선언, 클래스에서 상속지정, 부모 인터페이스 우클릭 빠른자원 리펙토링 -> 인터페이스택
+                  인터페이스를 이용하는 이유는 다중상속때문이다. (다중상속은 코드가 꼬이므로 자제한다.)
+
+Stream : 디스크와 런타임을 연결하주는 가상의 통로
+버퍼:런타임 데이터를 모아뒀다가 한번에 보내어 저장한다.
+버퍼 플러시 : 버퍼에 쌓인 데이터를 보낸다.
+

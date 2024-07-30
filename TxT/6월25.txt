@@ -1,0 +1,129 @@
+[유니티 용어]
+Prefabs : 원본의 오브젝트를 알려준다. 원본의 오브젝트를 바꾸면 파생된 오브젝트들이 한번에 바뀐다.
+            사용자가 제작한 오브젝트도 project탭의 에셋 폴더에 넣으면 prefabs화 된다.
+            prefabs파일에 등록 후 복사해야 한번에 수정가능.
+
+directional Light : 햇빛 오브젝트
+
+polygon : 3D 그래픽에서 입체 도형을 구성하는 최소 단위의 다각형, 3개이상의 모서리와 꼭짓점이 연결된 도형.
+             즉, 이 폴리곤이 많아지면 무거워진다.
+
+scene탭 바로 밑 기능. (오브젝트 당 적용 가능.)
+pivot : 기준점의 위치?
+local : 캐릭터 방향에 따라 축이 변하는 것.
+global : 절대 좌표로써 축이 항상 일정하게 고정되는 것.
+
+scale Factor : 원본의 디테일을 유지하면 크기를 키우는 기능
+
+유니티 콜라이더중 오브젝트 감지를 가장 잘하는 것이 스피어 콜라이더 -> 박스 콜라이더 순이다.
+메쉬 콜라이더는 감지력이 가장 떨어져 총알 같은 빠른 오브젝트는 통과할 수 있다.
+
+legacy -> 애니메이션을 스크립트로 구동하는 방식
+
+generic -> 이족보행을 제외한 애니메이션은 이방식을 사용한다.
+humanoid -> 캐릭터가 이족보행하면 이방식을 사용한다.
+=>제네릭과 휴머노이드를 합쳐 메카님(mecarnim)방식이라 부른다.
+   프로젝트가 커질 수록 애니메이션이 무거워지는데 이를 간편하게 만들기 위해 메카님 방식을 이용한다.
+
+[유니티 제작]
+[preview]=======================================
+1. 총 쏘기 제작
+    -한발씩 쏘기 제작
+    -연사 쏘기 제작
+    -머즐 플래쉬 제작 (총구 화염)
+
+2. 총알에 맞은 부위는 스파크(이펙트) 효과가 나는 기능 제작
+
+3. 재장전 기능 제작 (26일에 계속)
+    -10발 쏠 때마다 재장전 기능 제작 (애니메이션 적용도 같이.)
+
+4.UI로 구현
+==============================================
+
+1. 총 쏘기 제작
+
+-총알 제작
+ >lowpolybullet을 에셋에서 가져온다.
+ >총알의 기준점을 pivot, local로 설정한다. (캐릭더의 방향에 따라 축이 변해야하기 때문.)
+ >해당 오브젝트 x 로케이션을 90으로 바꾼다.
+ >빈 오브젝트를 만들어 총알 오브젝트를 넣는다.
+   (총알 오브젝트는 y축을 변경해야 총알이 앞으로 나감, 다른 축을 변경하기위해 부모 오브젝트를 만든다.)
+   (총알 오브젝트의 포지션을 0,0,0으로 맞추면 부모 오브젝트와 겹칠수 있다.)
+ >총알의 꼬리 궤적을 만들기 위해 부모 오브젝트에 트레일 렌더를 추가한다.
+ >트레일 렌더의 표를 조정하여 궤적을 표현한다.
+ >그 궤적의 머터리얼을 제작한다. 쉐이더는 (파티클 -> 프리오리티 에드티브 // 뒷배경을 투명으로 처리하는 방식.)
+ >부모 오브젝트에 머터리얼을 입힌다.
+ >부모 오브젝트에 rigidbody/capsule collider를 적용시킨다. (움직이는 물체 충돌감지를 위해)
+ >rigidbody에서 중력사용을 해제한다. (적용시키면 자동으로 떨어짐, 조절 불가능.)
+ >capsule collider에서 센터를 0,0,0으로 설정 (중심을 부모오브젝트 중심에 위치함.)
+ >capsule collider에서 direction을 z축으로 설정한다. (기준 축 설정, 날아가는 방향과 일치시키기 위해.)
+ >capsule collider에서 radius와 height를 오브젝트 크기에 맞게 설정한다.
+ >부모 오브젝트에 적용할 스크립트 제작. (총알은 한번 나가면 되니 update가 필요없다.)
+
+public float Speed = 1500f;
+public Rigidbody rb;
+
+rb.AddForce(transform.forward * Speed);
+Destroy(this.gameObject, 3.0f);
+
+ >만든 부모 오브젝트를 prefabs에 넣는다. (총알은 일정 조건일때만 불러와야하기 때문에 동적할당이 필요하여 넣는다.)
+ >발사 위치 지정하기 빈 오브젝트를 총구에 위치시킨다.
+ >해당 빈오브젝트를 컴뱃 플레이어 밑에 넣는다.
+ >fps컨트롤러에 새로운 발사 스크립트를 추가한다.
+ >발사스크립트 코딩.
+
+public GameObject bulletPrefab; //총알 오브젝트 가져오기
+public Transform firePos; // 발사 위치 설정
+public Animation fireAni; // 총알 발사 할때 애니메이션
+public AudioSource fireSource; // 총알 발사 소리 출력 위치
+public AudioClip fireClip; //총알 발사 소리
+public float fireTime; //처음엔 보이게 하다가 나중에 감추는 식으로 코딩한다.
+
+[단발]
+if (Input.GetMouseButtonDown(0))
+{
+    Instantiate(bulletPrefab, firePos.position, firePos.rotation); //오브젝트 생성 함수.
+    fireSource.PlayOneShot(fireClip, 1.0f);
+}
+
+[연발]
+if(Input.GetMouseButton(0)) //누르는 동안 계속 호출된다. 딜레이가 없으면 오브젝트가 과생성.
+{
+    if (Time.time - fireTime > 0.1f) // 현재시간에서 과거 시간을 뺀 시간이 0.1보다 클 경우
+    {//즉, 위 조건은 0.1초의 딜레이를 주는 효과가 있다.
+        Instantiate(bulletPrefab, firePos.position, firePos.rotation); //오브젝트 생성 함수.
+        fireSource.PlayOneShot(fireClip, 1.0f);
+        fireTime = Time.time;
+    }
+}
+
+문제점 뛰는 동안 발사가됨, 뛸때는 발사하지 않도록 해야함.
+
+public HandCtrl handCtrl;
+handCtrl = this.gameObject.GetComponent<HandCtrl>();
+
+if(handCtrl.isRun == false)
+    Fire();
+
+해당 코드로 수정
+
+2. 총알에 맞은 부위는 스파크(이펙트) 효과가 나는 기능 제작
+
+>컨테이너를 감싸는 박스오브젝트를 제작후 메쉬를 제거.
+>prefab에 Bullet의 태그를 새로 만든다.
+>스크립트로 사운드소스/사운드클립/게임오브젝트를 추가한다.
+>소리설정과 이펙트를 추가한다.
+>맞는 코딩은 시작한다.
+private void OnCollisionEnter(Collision col)
+{
+    if(col.gameObject.tag == ("BULLET"))
+    {
+        Destroy(col.gameObject);
+        spark_S.PlayOneShot(spark_C, 1.0f);
+        var spark = Instantiate(spark_O, col.transform.position, Quaternion.identity);
+        Destroy(spark, 2.0f);
+    }
+}
+
+[C#]==============================================================
+

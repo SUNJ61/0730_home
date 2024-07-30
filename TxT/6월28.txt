@@ -1,0 +1,132 @@
+==============================================================================
+[유니티 기타지식]
+
+리깃바디에 interpolate -> interpolate : 충돌할때 움직임을 부드럽게 만드는데 사용. (움직이고 부드러워짐.)
+                                (게임의 프레임속도가 물리업데이트 속도보다 높을때 사용)
+                                 extrapolate : 다음 프레임의 움직임을 예측하여 자연스러운 움직임을 만든다. (움직이기전에 예측)
+
+빈번하게 파티클 시스템을 호출해야 할 경우 -> 컴퍼넌트에 파티클 시스템을 만들어 사용.
+빈번하게 불러오지 않는 파티클을 불러오고 삭제할 경우 -> 게임 오브젝트로 불러와서 distory한다.
+
+방향자료형 Vector숫자 (숫자는 차원)
+회전자료형 Quaternion (기준점 , 회전할 위치)
+
+ui 랜더모드
+ -스크린 스페이스 오버레이 : 화면을 가리면서 ui를 생성
+ -월드 스페이스 : 특정 오브젝트에 ui달기 위해 사용
+
+[preview]========================================================================
+1. 적 만들기
+
+2. 블러드 이펙트 제작
+
+3. 관련 UI제작
+  -적 머리위에 HPbar 구현
+  -적 머리위에 남은 hp잔량 표시 구현
+
+4. 복습
+
+5. 좀비 여러마리 만들기
+
+==============================================================================
+-이전 문제점 해결 (좀비를 밀면 너무 잘밀림.)
+ 스크립트 수정
+
+(OnCollisionEnter함수 내에 추가)
+rb.isKinematic = false;
+
+2. 블러드 이펙트 제작
+  -스크립트 수정
+
+(추가 선언)
+public GameObject BloodEffect;
+
+(총알을 감지한 if문 안에 추가)
+ Vector3 hitpos = col.transform.position; // 맞은 위치를 3차원 공간에 저장
+ Quaternion rot = Quaternion.FromToRotation(-Vector3.forward, hitpos.normalized); // 일정 범위 만큼 회전하게 설정하는 명령어, 앞쪽 방향에서 맞은 방향으로 회전
+ var blood = Instantiate(BloodEffect, hitpos, rot); //오브젝트 생성 (충돌을 감지한 오브젝트에서 회전 없이.), var = GameObject
+ Destroy(blood, Random.Range(0.8f, 1.2f)); // 0.8~1.2초 랜덤한 시간 이후 생성한 blood 자료형 삭제
+
+  -유니티에서 이번에 생성한 object에 블러드 이펙트 넣기
+
+3. hp bar제작
+  -넣을 오브젝트에 ui->캔버스 생성
+  -랜더 모드를 월드 스페이스로 변경
+  -크기와 위치 조절하기
+  -캔버스 우클릭하여 ui -> image선택
+  -이미지를 캔버스와 동일한 크기로 조절
+  -색을 검정색으로 만들어 hp-frame으로 저장.
+  -같은 걸 하나 더 만들어서 색을 흰색으로 지정.
+  -소스 이미지에 hp-bar를 넣는다. (pc최적화, 타입 텍스쳐 스프라이트 확인하기.)
+  -이미지 타입을 필드로 변경후 채우는 방법을 수평(호라이즌)을 선택한다.
+  -스크립트 제작
+
+(총알 스크립트에 추가)
+public int damage = 20;
+
+(총을 맞았을때 if문 안에 추가)
+HitInfo(col);
+HpInit -= col.gameObject.GetComponent<BulletCtrl>().damage; //같은 오브젝트 안에있는 총알 스크립트에 데미지 변수를 가져온다.
+hpBar.fillAmount = (float)HpInit/(float)maxHp; //fillAmount는 플롯값만 받는다.
+
+데미지 출력
+  -캔버스에 ui -> 레거시 -> text생성
+  -위치 맞추기.
+  -초기값 작성.
+  -스크립트 작성
+
+(총을 맞았을 때 if문 안에 넣기)
+hptext.text = $"HP : {Inithp.ToString()}";
+
+  -유니티에 생긴 text컴포넌트에 만든 text ui넣기
+
+ui가 카메라를 안보는 문제점이 있음.
+
+  -스크립트 제작
+
+4. 스켈레톤 만들기.
+  -모델크기를 조정하면 애니 크기도 전부 조정해야한다.
+  -앞서 했던 좀비와 똑같이 하면됨.
+
+
+(수정하기) 피튀는 방향 조정하기
+Vector3 hitpos = col.transform.position;
+Vector3 hitnormal = hitpos - fireCtrl.transform.position; // 맞은위치 - 발사 워치 (맞은 거리 및 방향의 복합정보.)
+hitnormal = hitnormal.normalized; //방향의 정보만 남긴다. (백터만 남음)
+Quaternion rot = Quaternion.LookRotation(hitnormal); // 백터를 입력 받아 그방향으로 회전시킨다.
+
+5. 좀비 여러마리 만들기
+
+  -스폰 포인트 (빈오브젝트)만들기 
+  -빈 오브젝트 눌러서 쉬프트 알트 n클릭
+  -만든 오브젝트는 포인트이며 스폰장소가 된다. 여러개 복사해서 원하는 장소에 옮긴다.
+  -다른 빈오브젝트를 만든다. 이는 게임을 관리할 오브젝트이다
+  -몹에 태그를 달아준다.
+  -게임 관리 오브젝트에 넣을 스크립트를 만든다.
+
+(선언)
+public GameObject mob_fb; //1번
+public Transform[] point; //2번
+private float timePrev; //3번 - 몇초 뒤에
+private float SpawnTime = 3.0f; //3번 - 3초간격
+private int MaxCount = 10; //4번
+
+(start)
+//하이라키에서 SpawnPoints라는 오브젝트를 찾고 그 오브젝트의 속한 위치 컴포넌트들을 저장한다.(##자기 자신위치 정보 포함##)
+point = GameObject.Find("SpawnPoints").GetComponentsInChildren<Transform>(); //동적 할당
+timePrev = Time.time; // 업데이트로 내려가면 과거시간이 됨.
+
+(update)
+ //하이라키에서 몬스터 태그를 가진 오브젝트의 갯수를 카운트해서 넘김
+ int monsterCounter = GameObject.FindGameObjectsWithTag("MONSTER").Length;
+ if (monsterCounter < MaxCount)
+ {
+     int randPos = Random.Range(1, point.Length);
+     Instantiate(mob_fb, point[randPos].position, point[randPos].rotation);
+     timePrev = Time.time; //과거시간 업데이트
+ }
+[C#]============================================================================
+
+클래스의 종류
+ -기능적 성격을 가진 컨트롤 클래스 : 기능을 수행하는 클래스 -> 위 관리 스크립트가 이에 해당
+ -자료적 성격을 가진 엔티티(엔터티) 클래스 : 저장을 많이 하고있는 클래스

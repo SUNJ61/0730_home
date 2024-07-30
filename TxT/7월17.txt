@@ -1,0 +1,165 @@
+  -플레이어 오브젝트에 스탠다드 에셋 -> 이펙트 -> 프로젝터에 있는 블롭라이트프로젝터를 플레이어에 넣고
+   위에서 쏘는 조명처럼 만들어 준다. (모바일 게임용)
+  -Far Clip Plane을 줄인다. (조명이 비추는 거리)
+  -Field of view도 조정. (조명이 비추는 폭)
+  -블롭쉐도우프로젝터는 그림자를 만들어주는 오브젝트이다. (모바일 게임용)
+  -디렉셔널 라이트의 쉐도우 타입은 그림자 생성에 관여, no쉐도우는 그림자를 생성하지 않음.
+  -디렉셔널 라이트에 Culling Mask는 원하는 레이어만 보이게 한다. (즉, 레이어에 따라 렌더링 결정 가능)
+
+  -addforce : 물체에 일정한 방향과 크기의 힘을 직접적으로 가할때 사용, 물체 주변에는 영향 x
+                 다양한 종류의 힘으로 사용가능, 지정된 방향으로 힘이 주어짐, 힘의 크기는 시간에 따라 변화.
+  -addexplosionforce : 특정 지점에서 폭발이 발생했을 때 주변 물체에 힘을 가하는 방식의 시뮬레이션.
+                             주변에 힘의 영향 o, 힘의 방향은 폭발 중심에서 멀어지는 방향,
+                             폭발 중심에서 멀어지면 받는 힘 감소.
+=================================================================================
+오늘 할 것
+
+1. 무기 발사 방식 중 projectileMovement(총알에 리깃바디,콜라이더를 사용한)방식을 사용 했을 때
+   총알 오브젝트 풀링을 사용한다. (나중에 적 스폰도 오브젝트 풀링으로 할 예정)
+
+2. Barrel폭파 (5번이상 맞으면 기름통 폭파, 주위에 있는 기름통도 물리에 영향을 받는 것을 구현)
+
+3. 오디오매니저 만들기
+   -게임 개발을 진행 할 때 공용 함수를 한곳에 모아 두고 관리하는 방법은 자원을 아낄수 있다.
+
+4. 무기 발사 방식중 레이캐스트를 이용해서 발사 (광선을 발사하는 방법) -> 대부분 이 방식을 쓴다.
+
+=================================================================================
+
+1. 총알 오브젝트 풀링
+
+   -빈 오브젝트 만들어서 오브젝트 풀링 매니저 역할을 한다.
+   -스크립트 작성.
+
+####풀링매니저 스크립트
+
+public static ObjectPoolingManager poolingManager;
+[SerializeField] private GameObject Bullet;
+public int MaxPool = 10; //오브젝트 풀링으로 생성할 갯수
+public List<GameObject> bulletpoolList; //using System.Collections.Generic; 활성화 됨
+
+private string bullet = "Bullet";
+void Awake()
+{
+    if (poolingManager == null)
+        poolingManager = this;
+    else if(poolingManager != this)
+        Destroy(gameObject);
+    DontDestroyOnLoad(gameObject);
+
+    Bullet = Resources.Load(bullet) as GameObject;
+    CreatBulletPool(); //오브젝트 풀링 생성 함수
+}
+void CreatBulletPool()
+{
+    GameObject PlayerBulletGroup = new GameObject("PlayerBulletGroup "); //게임 오브젝트 한개 생성
+    for (int i = 0; i < MaxPool; i++)
+    {
+        var _bullet = Instantiate(Bullet, PlayerBulletGroup.transform); //총알 오브젝트를 10개를 PlayerBulletGroup 안에 생성
+        _bullet.name = $"{(i+1).ToString()}발"; //오브젝트 이름을 1발 부터 10발 까지
+        _bullet.SetActive(false); //생성 된것 비활성화
+        bulletpoolList.Add(_bullet); // 생성된 총알 리스트에 넣었다.
+    }
+}
+public GameObject GetBulletPool()
+{
+    for(int i = 0; i < bulletpoolList.Count; i++)
+    {
+        if(bulletpoolList[i].activeSelf == false) //해당 번째의 총알이 비활성화 되어있다면
+        {
+            return bulletpoolList[i]; //비활성화 되어있다면 총알 반환
+        }
+    }
+    return null; //활성화 되어있으면 null을 반환
+}
+
+####fire컨트롤 스크립트
+
+-> 총알 오브젝트 생성과 관련된 명령어를 다뺀다.
+
+private GameObject Bullet;
+private string bullet = "Bullet";
+
+Bullet = Resources.Load(bullet) as GameObject;
+Instantiate(Bullet, FirePos.position, FirePos.rotation);
+
+####bullet 스크립트
+
+-> 총알 파괴 명령어를 다 뺀다.
+Destroy(this.gameObject, 2.0f);
+
+->총알이 파괴되지 않았을 경우 비활성화 함수 제작
+Invoke("BulletDisable", 2.0f);
+
+private void BulletDisable()
+{
+    this.gameObject.SetActive(false);
+}
+
+-> 총알이 비활성화 상태에서 활성화 됬을 때 발동하는 스크립트 작성
+private void OnEnable() //오브젝트가 켜졌을 때 발동 되는 함수
+{
+    rb.AddForce(tr.forward * Speed);
+}
+
+-> 총알이 활성화 상태에서 비활성화 됬을 때 발동하는 스크립트 작성
+private void OnDisable()
+{
+    trail.Clear();
+    tr.position = Vector3.zero;
+    tr.rotation = Quaternion.identity;
+    rb.Sleep(); //리깃바디 작동 중지
+}
+
+#### 총알이 벽에 맞았을 때 관리하는 스크립트
+
+Destroy(col.gameObject); ->삭제
+col.gameObject.SetActive(false); ->추가
+
+2. barrel 폭파
+
+  -모델링에 베럴 모델링 올리기, 머터리얼 찾아서 적용시키기
+  -리깃바디와 메쉬 콜라이더, 오디오소스 컴퍼넌트를 추가한다.
+   (메쉬 콜라이더는 오브젝트 모양대로 콜라이더 생성, 총알 같이 빠른 물체는 통과 할 수 있다.)
+  -메쉬콜라이더에 컨덱스를 체크한다. (콜라이더 모양 단순화 -> 총알 같이 빠른 물체도 감지 가능해진다.)
+  -이전에 만들었던 박스 컨트롤 스크립트를 넣는다. (나중에 사운드 매니저 만들 예정)
+  -배럴을 프리팹에 넣고 스크립트 하나를 만들어서 넣는다.
+  -플레이어오브젝트의 태그와 레이어를 둘다 player로 만든다. (레이어는 6번에 만들어야함.)
+  -배럴도 레이어를 만들어 지정해준다.
+  -스크립트 작성.
+
+3. 오디오매니저 만들기
+
+  -빈오브젝트 만들고 스크립트 넣기.
+  -이전 스크립트에 있던 오디오소스 컴포넌트 불러오는거나, 오디오 실행 관련 코드 지우기, 클립 선언은 있어야함.
+
+=================================================================================
+C#
+
+무명형식 <anonymouse Type>
+ -> 무명 형식은 형식의 선언과 동시에 인스턴스를 할당, 이 때문에 인스턴스를 한번 만들고 다시는 만들지 않을 때 
+     무명 형식이 요긴하게 쓰인다.
+ ->선언 방식 : var a = new { Name = "박지성", Age = 44 };
+                   var b = new { Subject = "수학", Score = new int[] { 90, 80, 70, 60 } };
+    위와 같이 배열도 같이 가능하며 선언시 new 뒤에 바로 선언할 그룹을 만들면 된다.
+
+인터체이스의 프로퍼티
+-터페이스는 함수는 선언만 가능, 프로퍼티를 사용하면 자동 구현 프로퍼티로 선언 했지만 구현은 없다.
+ C#컴파일러는 인터페이스의 프로퍼티에 대해서 자동으로 구현해주지 않는다. 즉, 선언만 된 프로퍼티임.
+
+-인터페이스에서 선언된 프로퍼티는 상속받은 클래스에서 다시 구현해 주어야한다.
+ 이때 프로퍼티를 다시 구현할 때 자동 구현 프로퍼티를 사용해도 무관하다.
+
+추상클래스의 프로퍼티
+-클래스처럼 구현된 프로퍼티를 가질 수 있고 인터페이스처럼 구현되지 않는 프로퍼티도 가질수 있음
+-추상클래스에서 구현되지 않은 프로퍼티는 추상 프로퍼티라고 부른다. 
+
+선형탐색
+ -가장 낮은 인덱스부터 하나씩 값을 비교해 가면서 찾는다.
+
+이진탐색
+ -(조건)배열내 값이 오름차순?으로 정렬이 되어야한다.
+ -배열의 중앙 인덱스에 값과 비교하여 값이 크면 중앙 인덱스 기준 왼쪽 배열을 버리고
+  값이 작으면 중앙 인덱스 기준 오른쪽 배열을 버린다.
+ -다시 중앙 인덱스를 찾아 위와 같은 방법으로 비교하며 값을 찾는다.
+

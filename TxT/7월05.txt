@@ -1,0 +1,45 @@
+믹사모 -> 무료에셋 많은곳
+=======================================================================
+여러가지 애니메이션을 연결하여 표현할 때 -> 블렌드 트리를 사용한다.
+
+생성된 블렌드 트리의 파라미터는 float을 사용한다. (좌표값을 받아야하기 때문) x,y 2개 필요
+->파라미터를 2개 생성했으므로 블렌드 트리도 2D 심플 디렉셔녈로 설정한다.
+->그후 블렌드 트리의 파라미터에 x y를 넣는다.
+
+블렌트 트리에 모션을 5개 추가한다. (idle,앞,뒤,오른쪽,왼쪽 추가 예정)
+->idle모션을 넣고 x 0 y 0설정
+->앞 모션을 넣고 x 0 y 1설정
+->뒤 모션을 넣고 x 0 y -1설정
+->오른쪽 모션을 넣고 x 1 y 0설정
+->왼쪽 모션을 넣고 x -1 y 0설정
+(2차원 좌표에 대입된다고 생각하면 편함)
+
+즉, 하나의 트리에서 2개의 파라미터를 조정하여 5개의 모션 출력가능
+
+플레이어 코드수정
+
+선언
+private Transform tr;
+private Animator animator;
+
+private float h = 0f, v = 0f, r = 0f; //Z축 이동, X축 이동,  y축 회전을 담당
+private float moveSpeed = 7f;
+private float turnSpeed = 150f;
+
+스타트
+tr = GetComponent<Transform>();
+animator = GetComponent<Animator>();
+
+업데이트
+h = Input.GetAxis("Horizontal"); //A D
+v = Input.GetAxis("Vertical"); //W S
+r = Input.GetAxisRaw("Mouse X"); //y축 회전
+tr.Translate(Vector3.right * h * Time.deltaTime * moveSpeed);
+{
+    animator.SetFloat("PosX", h , 0.01f, Time.deltaTime);
+}
+tr.Translate(Vector3.forward * v * Time.deltaTime * moveSpeed);
+{
+    animator.SetFloat("PosY", v, 0.01f, Time.deltaTime);
+}
+tr.Rotate(Vector3.up * r *Time.deltaTime * turnSpeed);

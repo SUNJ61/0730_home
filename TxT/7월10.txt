@@ -1,0 +1,217 @@
+포인트 엔터/엑시트 -> 커서나 손가락이 눌렀을 때 땟을 때 반응
+포인트 업/다운 -> 커서나 손가락이 누르는 동안 반응, 땟을 때 초기화
+
+####상속 클래스 옆 선언
+IDragHandler, IDropHandler
+
+####함수 선언
+public void OnDrag(PointerEventData eventData) // IDragHandler은 이벤트 트리거 대신 사용할 수 있다.
+{
+    throw new System.NotImplementedException();
+}
+
+public void OnDrop(PointerEventData eventData) // IDropHandler은 이벤트 트리거 대신 사용할 수 있다.
+{
+    throw new System.NotImplementedException();
+}
+
+####sqrMagnitude (거리비교 함수) **중요**
+이전 distance는 두 pos사이에 거리를 구할 수 있었다. (magnitude함수와 둘다 같은기능이다.)
+sqrMagnitude는 두 pos사이에 거리의 제곱을 구한다. (이는 루트 계산이 없어 계산 속도가 빠르다.)
+그래서 sqrMagnitude는 정확한 거리 계산보다는 두 거리사이를 비교하는데 사용하는데 유용하다.
+==============================================================================
+0. 배경 움직임 다른 방법 사용하기.
+
+1. 파이어버튼 , 조이스틱 제작
+==============================================================================
+
+0. 배경 움직임 다른 방법 사용하기. (이미지를 여러개 넣어서 반복해서 돌리기)
+
+   - BG_Far에서 머터리얼 안에 있는 이미지를 돌리는 경우는 3D게임에서 사용하는 기법이다.
+   - 2D게임에서 사용하는 방법으로 수정, 빈 오브젝트 만들고 Far이미지 넣기.
+   - 숄팅레이어 만들고 레이어 오더를 0으로 설정, 숄팅레이어도 추가한걸 맨위로 올려야한다.
+     (이전에 설정했던 레이어 숫자도 수정, 가장 뒤 배경이 제일 낮은 숫자)
+   - draw mode를 타일로 고치고 화면에 알맞게 위치시킨다.
+   - 이때 타격 이펙트와 부스터 이펙트가 안나온다. 로켓안에 넣어둔 이펙트를 찾고 파티클 이펙트 -> 렌더러 -> 숄팅레이어
+     오더인 레이어를 로켓과 똑같이 설정해준다. (레이어 설정 중요하다.)
+   - 만든 far이미지를 복사한다. far이미지에 스크립트를 적용하고 코딩한다.
+
+(선언)
+private Transform tr;
+private BoxCollider2D collider2D;
+
+private float Speed;
+private float Width;
+
+(스타트)
+IEnumerator Start() -> 함수 수정 void를 사용하지 않음, 초기에 자동 호출 된다. IEnumer 함수들은 yield return이 반드시 필요.
+	collider2D = GetComponent<BoxCollider2D>();
+	tr = GetComponent<Transform>();
+	Width = collider2D.size.x; //배경 이미지의 x축 사이즈를 알 수 있다.
+	yield return null; //자동 호출후 한프레임 쉰다. IEnumerator함수에서만 사용가능, (한프레임 쉬고 업데이트 진행)
+                                 //컴퍼넌트가 너무 많을 경우 한프레임 딜레이를 주면 컴퍼넌트를 나눠 잡을 수 있는 효과가 있다.
+	StartCoroutine(BackgroundLoop()); //한프레임 쉬었다가 BackgroundLoop()함수 호출
+
+IEnumerator BackgroundLoop() 함수 생성 -> 업데이트를 자주 쓰지 않는다. 메모리 사용량이 높기 때문.
+
+
+#게임매니저 스크립트 수정 -> BackgroundLoop()는 while문을 필요한다. while을 돌릴 조건을 게임 매니저에서 관리
+()
+
+1. 파이어버튼 , 조이스틱 제작
+    -캔버스 만들기, 캔버스 (스케일 윗 스크린 사이즈 설정해서 1920 1080맞추기)아래에 아래 오브젝트 만들기
+    -버튼 만들어서 파이어 적기, 위치 조정
+    -조이스틱 이미지 만들어서 아들오브젝트 이미지를 만들어 조이스틱 모양 만들기
+
+#이어서 파이어 버튼 제작
+    -발사 버튼의 버튼 컴퍼넌트의 온클릭을 하나 추가한다.
+    -발사할 이미지 가져오기, 이미지를 슬라이스로 고치고 크기조절
+    -레이어 만들고 번호 로켓과 운석과 같은 번호 할당, z도 같은 위치로
+
+2. 조이스틱 제작 (캔버스 스케일 1920 * 1080인지 확인후 진행)
+    -조이스틱 패드 이미지에 이벤트 트리거 추가
+    -이벤트 트리거에 포인트 다운 추가 (이미지를 누르면 반응)
+    -이벤트 트리거에 포인트 업 추가 (이미지 터치를 멈췄을 때 반응)
+    -조이스틱 패드 이미지에 스크립트 추가
+
+(선언)
+class Touch_Pad : MonoBehaviour //// MonoBehaviour라는 부모 클래스가 기능을 상속시켜 주었다. 
+
+private RectTransform _touchPad;
+
+private Vector3 _StartPos = Vector3.zero;
+private float _dragRadius = 122.0f;
+private int _touchPadId = -1; // 원 안에서 터치가 되었는지 판단하는 변수
+private bool IsBtnPress = false; // 버튼을 누른 상태인지 판단
+
+(스타트)
+_touchPad = GetComponent<RectTransform>();
+_StartPos = _touchPad.position; // 초기에 터치패드 이미지가 있던 위치를 저장
+
+(함수 선언)
+public void BtnDown()
+{
+    IsBtnPress = true;
+}
+public void BtnUp()
+{
+    IsBtnPress = false;
+}
+
+    -조이스틱패드 이미지 오브젝트에 이벤트 트리거에 조이스틱패드 이미지 오브젝트를 넣는다.
+    -다운과 업에 맞게 만들었던 함수를 적용시킨다.
+    -다시 스크립트 수정
+
+####터치패드 스크립트
+
+(변수 선언)
+public Vector3 differ;
+
+(함수 추가 선언) 
+private void FixedUpdate() //고정 프레임 (그냥 업데이트함수는 코드가 늘어나면 프레임이 늘어남 이를 방지한 함수)
+{//정확한 물리량에 따른 것을 구현하거나 원하는 시간타임에 반드시 구현할 것이라면 해당함수를 사용한다.
+    if (Application.platform == RuntimePlatform.Android)
+    {
+        HandleTouchInput();
+    }
+    else if(Application.platform == RuntimePlatform.WindowsPlayer)
+    {
+        HandleInput(Input.mousePosition);
+    }
+}
+
+void HandleTouchInput() //모바일용 터치 패드 이동함수 (원안에서 터치가 되는지 아닌지만 판단, 움직임은 pc용 움직임 함수를 사용)
+{
+    int i = 0;
+    if(Input.touchCount > 0)
+    {
+        foreach(Touch touch in Input.touches) //Input.touches 라는 배열이 터치한 위치를 저장, 하나씩 꺼낸다.
+        {//즉, Input.touches는 터치한 좌표들을 가진 배열이다.
+            i++;
+            Vector2 touchPos = new Vector2(touch.position.x, touch.position.y); // 하나씩 꺼낸 좌표값을 벡터에 저장
+            if(touch.phase == TouchPhase.Began) //조건문 내용 : 터치유형 == 터치가 이제막 시작 되었다면
+            {
+                if(touch.position.x <= (_StartPos.x + _dragRadius)) //터치한 위치가 패드 원 안에 있다면
+                    _touchPadId = i; // 터치를 판단하는 변수를 양수로 바꿈 (양수 -> 터치중 / 음수 -> 터치 x)
+                
+                if (touch.position.y <= (_StartPos.y + _dragRadius)) //터치한 위치가 패드 원 안에 있다면
+                    _touchPadId = i; // 터치를 판단하는 변수를 양수로 바꿈 (양수 -> 터치중 / 음수 -> 터치 x)
+            }
+            if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
+            {//터치 상태 == 움직이고 있거나 터치 상태 == 멈춤 상태 둘중 하나라면 작동
+                if(_touchPadId == i) //원안에 있다면 i와 touchPadId가 같아져 함수 작동
+                {
+                    HandleInput(touchPos); //여기 이 함수에서 실제로 움직인다.
+                }
+            }
+            if(touch.phase == TouchPhase.Ended) //터치가 끝났다면
+            {
+                if (_touchPadId == i) // 이전까지 원안에서 터치가 되고 있었다면.
+                    _touchPadId = -1; // _touchPadId를 -1로 변경하면서 원안에 터치가 없다라고 알림.
+            }
+        }
+    }
+}
+
+void HandleInput(Vector3 input) //pc용 터치 패드 이동함수
+{
+    if(IsBtnPress) //패드 이미지를 눌렀다면
+    {
+        Vector3 diff = (input - _StartPos); // 조이스틱이 움직인 방향과 거리 값을 구할 수 있다. (터치위치 - 초기위치)
+        if(diff.sqrMagnitude > _dragRadius * _dragRadius) //전체 거리를 비교하여 원밖을 벗어났다면
+        {
+            diff.Normalize(); //방향정보만 뽑아내기 위하여 정규화 시킴
+            _touchPad.position = _StartPos + diff * _dragRadius; //터치하는 방향으로 패드이미지를 제일 끝쪽에 위치 시킨다.
+        }
+        else
+        {
+            _touchPad.position = input; //원안에 있으면 터치한 방향, 위치를 그대로 사용한다.
+        }
+    }
+    else //패드 이미지를 땟다면
+    {
+        _touchPad.position = _StartPos; //초기위치로 변경
+    }
+
+    differ = _touchPad.position - _StartPos;
+    Vector2 normalDiff = new Vector2(differ.x / _dragRadius, differ.y / _dragRadius); //거리에서 반지름으로나누면 방향이된다.
+
+    if (RocketCtrl != null)
+    {
+        RocketCtrl.OnStickPos(normalDiff);
+    }
+}
+
+
+####로켓 컨트롤 스크립트
+
+(선언 추가)
+private Touch_Pad pad;
+private Vector3 moveVector;
+
+(스타트 추가)
+pad = GameObject.Find("Joystick_Pad").GetComponent<Touch_Pad>();
+
+(업데이트 함수에 주석처리 및 움직임 함수 추가)
+
+ -> 기존에 터치하면 오브젝트 사이 거리차 만큼 이동하는 함수 주석처리
+ -> 그자리에 패드 컨트롤 함수 넣기
+
+(함수 추가)
+
+public void OnStickPos(Vector3 stickPos)
+{
+    h = stickPos.x;
+    v = stickPos.y;
+}
+
+private void PadCtrl()
+{
+    if (GetComponent<Rigidbody2D>()) //리깃바디2D가 존재한다면
+    {
+        Vector2 Speed = GetComponent<Rigidbody2D>().velocity; //힘과 방향
+        Speed.x = 4 * h; //h는 패드가 가르키는 x축 방향 
+        Speed.y = 4 * v; //v는 패드가 가르키는 y축 방향
+        GetComponent<Rigidbody2D>().velocity = Speed; //변한 속도를 다시 넣어준다.
+    }
+}
